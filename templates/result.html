@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>取得結果</title>
+    <style>
+        .container {
+            display: flex;
+            align-items: center;
+        }
+        .thumbnail {
+            margin-right: 20px;
+        }
+        .info {
+            display: flex;
+            flex-direction: column;
+        }
+        .info .title {
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+        .info .link {
+            font-size: 1em;
+            color: blue;
+        }
+    </style>
+</head>
+<body>
+    <h1>取得結果</h1>
+    <div class="container">
+        <div class="thumbnail">
+            {% if metadata.image %}
+                <img src="{{ metadata.image }}" alt="サムネイル" width="150">
+            {% else %}
+                <p>サムネイル画像が見つかりませんでした。</p>
+            {% endif %}
+        </div>
+        <div class="info">
+            <div class="title">{{ metadata.title }}</div>
+            <div class="link">
+                <a href="{{ metadata.url }}" target="_blank">{{ metadata.url }}</a>
+            </div>
+        </div>
+    </div>
+    <br>
+    <a href="{{ url_for('index') }}">戻る</a>
+</body>
+</html>
