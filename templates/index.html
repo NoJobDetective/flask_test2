@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>URLメタデータ取得ツール</title>
+</head>
+<body>
+    <h1>URLメタデータ取得ツール</h1>
+    {% if error %}
+        <p style="color:red;">{{ error }}</p>
+    {% endif %}
+    <form method="POST">
+        <label for="url">URLを入力してください:</label>
+        <input type="text" id="url" name="url" required>
+        <button type="submit">送信</button>
+    </form>
+</body>
+</html>
