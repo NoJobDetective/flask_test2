@@ -12,25 +12,9 @@
     form {
       margin-bottom: 30px;
     }
-    /* 星マーク採点のスタイル */
-    .star-rating {
-      direction: rtl;  /* 右から左に並べることでホバー効果を実現 */
-      display: inline-block;
-      font-size: 2rem;
-    }
-    .star-rating input[type="radio"] {
-      display: none;
-    }
-    .star-rating label {
-      color: #ccc;
-      cursor: pointer;
-    }
-    .star-rating input[type="radio"]:checked ~ label {
-      color: gold;
-    }
-    .star-rating label:hover,
-    .star-rating label:hover ~ label {
-      color: gold;
+    /* 評価スライダー用のコンテナ */
+    .rating-container {
+      margin-bottom: 20px;
     }
     /* 各プロジェクトのバナー表示 */
     .banner {
@@ -103,31 +87,11 @@
     <br>
     <textarea id="comment" name="comment" rows="4" cols="50" placeholder="感想を入力してください"></textarea>
     <br><br>
-    <label for="rating">評価:</label>
-    <div class="star-rating">
-      <!-- 0.5刻みで5点満点：高い値から順に配置（デフォルトは3点） -->
-      <input type="radio" id="star5" name="rating" value="5">
-      <label for="star5" title="5点"><i class="fas fa-star"></i></label>
-      <input type="radio" id="star4_5" name="rating" value="4.5">
-      <label for="star4_5" title="4.5点"><i class="fas fa-star-half-alt"></i></label>
-      <input type="radio" id="star4" name="rating" value="4">
-      <label for="star4" title="4点"><i class="fas fa-star"></i></label>
-      <input type="radio" id="star3_5" name="rating" value="3.5">
-      <label for="star3_5" title="3.5点"><i class="fas fa-star-half-alt"></i></label>
-      <input type="radio" id="star3" name="rating" value="3" checked>
-      <label for="star3" title="3点"><i class="fas fa-star"></i></label>
-      <input type="radio" id="star2_5" name="rating" value="2.5">
-      <label for="star2_5" title="2.5点"><i class="fas fa-star-half-alt"></i></label>
-      <input type="radio" id="star2" name="rating" value="2">
-      <label for="star2" title="2点"><i class="fas fa-star"></i></label>
-      <input type="radio" id="star1_5" name="rating" value="1.5">
-      <label for="star1_5" title="1.5点"><i class="fas fa-star-half-alt"></i></label>
-      <input type="radio" id="star1" name="rating" value="1">
-      <label for="star1" title="1点"><i class="fas fa-star"></i></label>
-      <input type="radio" id="star0_5" name="rating" value="0.5">
-      <label for="star0_5" title="0.5点"><i class="fas fa-star-half-alt"></i></label>
+    <div class="rating-container">
+      <label for="ratingRange">評価:</label>
+      <input type="range" id="ratingRange" name="rating" min="0" max="5" step="0.5" value="3">
+      <span id="ratingDisplay"></span>
     </div>
-    <br><br>
     <button type="submit">送信</button>
   </form>
   
@@ -185,5 +149,32 @@
       <p>入力されたデータはありません。</p>
     {% endif %}
   </div>
+  
+  <!-- JavaScript for updating rating display in index -->
+  <script>
+    function updateRatingDisplay(val) {
+      var r = parseFloat(val);
+      var full = Math.floor(r);
+      var half = (r - full) >= 0.5 ? 1 : 0;
+      var empty = 5 - full - half;
+      var stars = "";
+      for (var i = 0; i < full; i++) {
+        stars += "★";
+      }
+      if (half) {
+        stars += "⯨";
+      }
+      for (var i = 0; i < empty; i++) {
+        stars += "☆";
+      }
+      document.getElementById("ratingDisplay").innerText = stars;
+    }
+    document.getElementById("ratingRange").addEventListener("input", function() {
+      updateRatingDisplay(this.value);
+    });
+    window.addEventListener("load", function() {
+      updateRatingDisplay(document.getElementById("ratingRange").value);
+    });
+  </script>
 </body>
 </html>
