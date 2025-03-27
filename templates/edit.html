@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>プロジェクト編集</title>
+  <style>
+    form {
+      margin-bottom: 30px;
+    }
+    .error {
+      color: red;
+    }
+  </style>
+</head>
+<body>
+  <h1>プロジェクト編集</h1>
+  {% if error %}
+    <p class="error">{{ error }}</p>
+  {% endif %}
+  <form method="POST">
+    <label for="url">URLを入力してください:</label>
+    <input type="text" id="url" name="url" value="{{ project.url }}" required>
+    <br><br>
+    <label for="comment">URLに対する感想を入力してください:</label>
+    <br>
+    <textarea id="comment" name="comment" rows="4" cols="50">{{ project.comment }}</textarea>
+    <br><br>
+    <button type="submit">更新</button>
+  </form>
+  <a href="{{ url_for('index') }}">戻る</a>
+</body>
+</html>
