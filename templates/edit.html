@@ -3,11 +3,27 @@
 <head>
   <meta charset="UTF-8">
   <title>プロジェクト編集</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <!-- FontAwesome のCDN -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
   <style>
+    body {
+      margin: 0;
+      padding: 10px;
+      font-family: Arial, sans-serif;
+    }
     form {
       margin-bottom: 30px;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    form input[type="text"],
+    form textarea {
+      width: 100%;
+      padding: 8px;
+      box-sizing: border-box;
+      font-size: 1rem;
     }
     .star-rating {
       direction: rtl;
@@ -30,11 +46,12 @@
     }
     .error {
       color: red;
+      text-align: center;
     }
   </style>
 </head>
 <body>
-  <h1>プロジェクト編集</h1>
+  <h1 style="text-align:center;">プロジェクト編集</h1>
   {% if error %}
     <p class="error">{{ error }}</p>
   {% endif %}
@@ -44,7 +61,7 @@
     <br><br>
     <label for="comment">URLに対する感想を入力してください:</label>
     <br>
-    <textarea id="comment" name="comment" rows="4" cols="50">{{ project.comment }}</textarea>
+    <textarea id="comment" name="comment" rows="4">{{ project.comment }}</textarea>
     <br><br>
     <label for="rating">評価:</label>
     <div class="star-rating">
@@ -67,6 +84,8 @@
     <br><br>
     <button type="submit">更新</button>
   </form>
-  <a href="{{ url_for('index') }}">戻る</a>
+  <div style="text-align:center;">
+    <a href="{{ url_for('index') }}">戻る</a>
+  </div>
 </body>
 </html>
