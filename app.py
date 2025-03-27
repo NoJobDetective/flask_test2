@@ -6,7 +6,8 @@ import os
 
 app = Flask(__name__)
 
-PROJECTS_FILE = "projects.json"
+# app.py のあるディレクトリを基準に projects.json の絶対パスを指定
+PROJECTS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "projects.json")
 
 def get_metadata(url):
     """
@@ -70,6 +71,7 @@ def save_project(project):
     try:
         with open(PROJECTS_FILE, "w", encoding="utf-8") as f:
             json.dump(projects, f, ensure_ascii=False, indent=2)
+        print("プロジェクトが保存されました。現在のプロジェクト数:", len(projects))
     except IOError as e:
         print(f"{PROJECTS_FILE}への書き込みに失敗しました: {e}")
 
@@ -87,6 +89,7 @@ def index():
                 "title": metadata.get("title", ""),
                 "image": metadata.get("image") if not metadata.get("error403", False) else None
             }
+            print("保存対象プロジェクト:", project)
             save_project(project)
             return render_template("result.html", metadata=metadata, comment=comment)
         else:
