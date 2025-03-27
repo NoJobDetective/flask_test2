@@ -7,14 +7,13 @@ app = Flask(__name__)
 def get_metadata(url):
     """
     指定したURLからウェブページのメタデータ（タイトル、説明、画像）を取得する関数です。
-    ※ 403エラーの場合は error403 フラグをTrueとして返します。
+    ※403エラーの場合は error403 フラグをTrueとして返します。
     """
     try:
         response = requests.get(url)
-        # 403エラーの場合は、エラーフラグとURLのみを返す
         if response.status_code == 403:
             return {"error403": True, "url": url}
-        response.raise_for_status()  # 他のHTTPエラーの場合は例外発生
+        response.raise_for_status()
     except Exception as e:
         print(f"URLの取得中にエラーが発生しました: {e}")
         return None
@@ -29,7 +28,7 @@ def get_metadata(url):
         title_tag = soup.find('title')
         title = title_tag.string.strip() if title_tag else "タイトルが見つかりませんでした"
     
-    # 【説明文の取得】 ※表示には利用しませんが、取得例として
+    # 【説明文の取得】（取得例）
     desc_tag = soup.find('meta', property='og:description')
     if desc_tag and desc_tag.get('content'):
         description = desc_tag.get('content')
@@ -50,9 +49,11 @@ def get_metadata(url):
 def index():
     if request.method == "POST":
         url = request.form.get("url")
+        # 新たに感想の入力を取得
+        comment = request.form.get("comment")
         metadata = get_metadata(url)
         if metadata:
-            return render_template("result.html", metadata=metadata)
+            return render_template("result.html", metadata=metadata, comment=comment)
         else:
             error_message = "指定されたURLからメタデータを取得できませんでした。"
             return render_template("index.html", error=error_message)
