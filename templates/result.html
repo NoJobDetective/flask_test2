@@ -78,9 +78,9 @@
     <!-- 感想表示（下部） -->
     <div class="comment-section">
         <div class="comment-title">感想:</div>
-        <div class="comment-content">
+        <div class="comment-content" style="white-space: pre-line;">
             {% if comment %}
-                <p>{{ comment | replace('\n', '<br>') | safe }}</p>
+                <p>{{ comment }}</p>
             {% else %}
                 <p>感想は入力されていません。</p>
             {% endif %}
