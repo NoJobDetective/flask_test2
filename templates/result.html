@@ -80,7 +80,7 @@
         <div class="comment-title">感想:</div>
         <div class="comment-content">
             {% if comment %}
-                <p>{{ comment | join('\n') }}</p>
+                <p>{{ comment | replace('\n', '<br>') | safe }}</p>
             {% else %}
                 <p>感想は入力されていません。</p>
             {% endif %}
