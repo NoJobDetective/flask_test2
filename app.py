@@ -42,7 +42,7 @@ def get_metadata(url):
         desc_tag = soup.find('meta', attrs={'name': 'description'})
         description = desc_tag.get('content') if desc_tag else "説明が見つかりませんでした"
     
-    # サムネイル画像の取得
+    # サムネイル画像の取得（画像URLから画像をダウンロードしてBase64エンコード）
     image_tag = soup.find('meta', property='og:image')
     if image_tag and image_tag.get('content'):
         image_url = image_tag.get('content')
@@ -93,6 +93,19 @@ def save_project(project):
     except IOError as e:
         print(f"{PROJECTS_FILE}への書き込みに失敗しました: {e}")
 
+def load_projects():
+    """
+    projects.jsonから既存のプロジェクトデータを読み込んで返します。
+    """
+    if os.path.exists(PROJECTS_FILE):
+        try:
+            with open(PROJECTS_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"プロジェクトの読み込みに失敗しました: {e}")
+            return []
+    return []
+
 @app.route("/", methods=["GET", "POST"])
 def index():
     if request.method == "POST":
@@ -112,8 +125,9 @@ def index():
             return render_template("result.html", metadata=metadata, comment=comment)
         else:
             error_message = "指定されたURLからメタデータを取得できませんでした。"
-            return render_template("index.html", error=error_message)
-    return render_template("index.html")
+            return render_template("index.html", error=error_message, projects=load_projects())
+    # GETリクエスト時は既存のプロジェクトデータを読み込んで表示
+    return render_template("index.html", projects=load_projects())
 
 if __name__ == "__main__":
     app.run(debug=True)
