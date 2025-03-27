@@ -13,7 +13,7 @@ PROJECTS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "projec
 def get_metadata(url):
     """
     指定したURLからウェブページのメタデータ（タイトル、説明、画像）を取得する関数です。
-    ※403エラーの場合は error403 フラグをTrueとして返します。
+    ※403エラーの場合は error403 フラグを True として返します。
     """
     try:
         response = requests.get(url)
@@ -51,7 +51,6 @@ def get_metadata(url):
             img_response.raise_for_status()
             mime_type = img_response.headers.get("Content-Type", "image/jpeg")
             image_data = base64.b64encode(img_response.content).decode('utf-8')
-            # Data URIスキーム形式に変換
             image_data = f"data:{mime_type};base64,{image_data}"
         except Exception as e:
             print(f"画像のダウンロード中にエラーが発生しました: {e}")
@@ -98,8 +97,9 @@ def index():
                 "url": url_input,
                 "comment": comment,
                 "title": metadata.get("title", ""),
-                # 403エラーの場合は画像は None として保存
-                "image": metadata.get("image") if not metadata.get("error403", False) else None
+                # 403エラーの場合は image は None とし、error403 フラグを True とする
+                "image": metadata.get("image") if not metadata.get("error403", False) else None,
+                "error403": metadata.get("error403", False)
             }
             projects = load_projects()
             projects.append(project)
@@ -115,15 +115,14 @@ def edit(project_index):
         return "プロジェクトが見つかりません", 404
     project = projects[project_index]
     if request.method == "POST":
-        # 編集後のURLと感想を取得
         new_url = request.form.get("url")
         new_comment = request.form.get("comment")
         metadata = get_metadata(new_url)
         if metadata:
-            # URL更新の場合はメタデータも更新
             project["url"] = new_url
             project["title"] = metadata.get("title", "")
             project["image"] = metadata.get("image") if not metadata.get("error403", False) else None
+            project["error403"] = metadata.get("error403", False)
             project["comment"] = new_comment
             save_all_projects(projects)
             return redirect(url_for("index"))
