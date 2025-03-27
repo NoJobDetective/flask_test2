@@ -1,0 +1,8 @@
+# .gitignore
+*.db
+*.sqlite
+*.sqlite3
+/data/
+/instance/
+data.txt
+projects.json
