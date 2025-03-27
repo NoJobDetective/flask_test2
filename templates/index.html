@@ -74,14 +74,16 @@
     {% if projects %}
       {% for project in projects %}
         <div class="banner">
-          <!-- 左側：サムネイルがあれば表示、なければリンクのみ -->
+          <!-- 左側：error403 の場合は何も表示しない -->
           <div class="left">
-            {% if project.image %}
-              <img src="{{ project.image }}" alt="サムネイル">
-            {% else %}
-              <div class="link">
-                <a href="{{ project.url }}" target="_blank">{{ project.url }}</a>
-              </div>
+            {% if not project.error403 %}
+              {% if project.image %}
+                <img src="{{ project.image }}" alt="サムネイル">
+              {% else %}
+                <div class="link">
+                  <a href="{{ project.url }}" target="_blank">{{ project.url }}</a>
+                </div>
+              {% endif %}
             {% endif %}
           </div>
           <!-- 中央：タイトル、リンク、感想 -->
