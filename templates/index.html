@@ -3,7 +3,90 @@
 <head>
     <meta charset="UTF-8">
     <title>URLメタデータ取得ツール</title>
+</head><!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>URLメタデータ取得ツール</title>
+    <style>
+        /* プロジェクト一覧表示のスタイル */
+        .project-list {
+            margin-top: 30px;
+        }
+        .project-item {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+        .project-thumbnail {
+            margin-right: 15px;
+        }
+        .project-thumbnail img {
+            width: 100px;
+        }
+        .project-details {
+            flex: 1;
+        }
+        .project-title {
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+        .project-url a {
+            color: blue;
+        }
+        .project-comment {
+            white-space: pre-line;
+            margin-top: 5px;
+        }
+    </style>
 </head>
+<body>
+    <h1>URLメタデータ取得ツール</h1>
+    {% if error %}
+        <p style="color:red;">{{ error }}</p>
+    {% endif %}
+    <form method="POST">
+        <label for="url">URLを入力してください:</label>
+        <input type="text" id="url" name="url" required>
+        <br><br>
+        <label for="comment">URLに対する感想を入力してください:</label>
+        <br>
+        <textarea id="comment" name="comment" rows="4" cols="50" placeholder="感想を入力してください"></textarea>
+        <br><br>
+        <button type="submit">送信</button>
+    </form>
+
+    <!-- 過去の入力データの表示 -->
+    <div class="project-list">
+        <h2>過去の入力データ</h2>
+        {% if projects %}
+            {% for project in projects %}
+                <div class="project-item">
+                    <div class="project-thumbnail">
+                        {% if project.image %}
+                            <img src="{{ project.image }}" alt="サムネイル">
+                        {% endif %}
+                    </div>
+                    <div class="project-details">
+                        <div class="project-title">{{ project.title }}</div>
+                        <div class="project-url">
+                            <a href="{{ project.url }}" target="_blank">{{ project.url }}</a>
+                        </div>
+                        <div class="project-comment">
+                            {{ project.comment | replace('\n', '<br>') | safe }}
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <p>入力されたデータはありません。</p>
+        {% endif %}
+    </div>
+</body>
+</html>
+
 <body>
     <h1>URLメタデータ取得ツール</h1>
     {% if error %}
