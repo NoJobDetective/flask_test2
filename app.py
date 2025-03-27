@@ -88,18 +88,16 @@ def save_all_projects(projects):
 
 def render_stars(rating):
     """
-    数値評価（0～5, 0.5刻み）を星マークに変換します。
-    例：3.5 → ★★★⯨☆☆
-    ※全星は★、半星は⯨（環境により表示が異なる場合があります）、残りは☆。
+    数値評価（0～5, 1刻み）を星マークに変換します。
+    例：3 → ★★★☆☆
     """
     try:
         r = float(rating)
     except:
         r = 0.0
     full = int(r)
-    half = 1 if (r - full) >= 0.5 else 0
-    empty = 5 - full - half
-    return "★" * full + ("⯨" if half else "") + "☆" * empty
+    empty = 5 - full
+    return "★" * full + "☆" * empty
 
 # カスタムフィルターとして登録
 app.jinja_env.filters['render_stars'] = render_stars
