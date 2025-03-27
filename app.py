@@ -52,6 +52,7 @@ def get_metadata(url):
 def save_project(project):
     """
     project（辞書型：URL, 感想, タイトル, サムネイル画像）をprojects.jsonに追記します。
+    パーミッション不足の場合は、エラーメッセージを出力します。
     """
     if os.path.exists(PROJECTS_FILE):
         with open(PROJECTS_FILE, "r", encoding="utf-8") as f:
@@ -62,8 +63,14 @@ def save_project(project):
     else:
         projects = []
     projects.append(project)
-    with open(PROJECTS_FILE, "w", encoding="utf-8") as f:
-        json.dump(projects, f, ensure_ascii=False, indent=2)
+    try:
+        with open(PROJECTS_FILE, "w", encoding="utf-8") as f:
+            json.dump(projects, f, ensure_ascii=False, indent=2)
+    except PermissionError as e:
+        # パーミッション不足の場合のエラーハンドリング
+        print("エラー: projects.jsonへの書き込み権限が不足しています。")
+        print("エラー詳細:", e)
+        # 必要に応じて、ユーザーへエラーメッセージを返すなどの対応を実施
 
 @app.route("/", methods=["GET", "POST"])
 def index():
