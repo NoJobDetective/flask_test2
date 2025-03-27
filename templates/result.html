@@ -60,7 +60,8 @@
                 {% if metadata.image %}
                     <img src="{{ metadata.image }}" alt="サムネイル" width="150">
                 {% else %}
-                    <p>サムネイル画像が見つかりませんでした。</p>
+                    <!-- サムネイルが取得できなければ表示しない -->
+                    <p>サムネイル画像はありません。</p>
                 {% endif %}
             </div>
             <div class="center">
