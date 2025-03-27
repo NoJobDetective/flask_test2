@@ -156,30 +156,4 @@
             <div class="comment">
               {{ project.comment | replace('\n', '<br>') | safe }}
             </div>
-            <div class="rating-display">
-              評価: {{ project.rating | render_stars }}
-            </div>
-            <!-- 編集リンク -->
-            <div class="edit-link">
-              <a href="{{ url_for('edit', project_index=loop.index0) }}">編集する</a>
-            </div>
-          </div>
-          <!-- 右側：QRコード生成用コンテナ -->
-          <div class="right">
-            <div id="qrcode{{ loop.index }}"></div>
-          </div>
-        </div>
-        <!-- 各プロジェクトごとにQRコードを生成 -->
-        <script>
-          new QRCode(document.getElementById("qrcode{{ loop.index }}"), {
-            text: "{{ project.url }}",
-            width: 128,
-            height: 128,
-            colorDark : "#000000",
-            colorLight : "#ffffff",
-            correctLevel : QRCode.CorrectLevel.H
-          });
-        </script>
-      {% endfor %}
-    {% else %}
-      <p
+            <div
