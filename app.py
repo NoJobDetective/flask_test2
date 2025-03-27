@@ -3,6 +3,7 @@ import requests
 from bs4 import BeautifulSoup
 import json
 import os
+import base64
 
 app = Flask(__name__)
 
@@ -33,7 +34,7 @@ def get_metadata(url):
         title_tag = soup.find('title')
         title = title_tag.string.strip() if title_tag else "タイトルが見つかりませんでした"
     
-    # 説明文の取得（取得例）
+    # 説明文の取得（例）
     desc_tag = soup.find('meta', property='og:description')
     if desc_tag and desc_tag.get('content'):
         description = desc_tag.get('content')
@@ -44,11 +45,28 @@ def get_metadata(url):
     # サムネイル画像の取得
     image_tag = soup.find('meta', property='og:image')
     if image_tag and image_tag.get('content'):
-        image = image_tag.get('content')
+        image_url = image_tag.get('content')
+        try:
+            img_response = requests.get(image_url)
+            img_response.raise_for_status()
+            # MIMEタイプをヘッダから取得（取得できなければimage/jpegとする）
+            mime_type = img_response.headers.get("Content-Type", "image/jpeg")
+            image_data = base64.b64encode(img_response.content).decode('utf-8')
+            # Data URIスキーム形式に変換
+            image_data = f"data:{mime_type};base64,{image_data}"
+        except Exception as e:
+            print(f"画像のダウンロード中にエラーが発生しました: {e}")
+            image_data = None
     else:
-        image = None
+        image_data = None
 
-    return {"error403": False, "title": title, "description": description, "image": image, "url": url}
+    return {
+        "error403": False,
+        "title": title,
+        "description": description,
+        "image": image_data,
+        "url": url
+    }
 
 def save_project(project):
     """
