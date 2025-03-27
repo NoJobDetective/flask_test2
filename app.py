@@ -24,7 +24,7 @@ def get_metadata(url):
 
     soup = BeautifulSoup(response.text, 'html.parser')
     
-    # 【タイトルの取得】
+    # タイトルの取得
     title_tag = soup.find('meta', property='og:title')
     if title_tag and title_tag.get('content'):
         title = title_tag.get('content')
@@ -32,7 +32,7 @@ def get_metadata(url):
         title_tag = soup.find('title')
         title = title_tag.string.strip() if title_tag else "タイトルが見つかりませんでした"
     
-    # 【説明文の取得】（取得例）
+    # 説明文の取得（取得例）
     desc_tag = soup.find('meta', property='og:description')
     if desc_tag and desc_tag.get('content'):
         description = desc_tag.get('content')
@@ -40,7 +40,7 @@ def get_metadata(url):
         desc_tag = soup.find('meta', attrs={'name': 'description'})
         description = desc_tag.get('content') if desc_tag else "説明が見つかりませんでした"
     
-    # 【サムネイル画像の取得】
+    # サムネイル画像の取得
     image_tag = soup.find('meta', property='og:image')
     if image_tag and image_tag.get('content'):
         image = image_tag.get('content')
@@ -52,25 +52,26 @@ def get_metadata(url):
 def save_project(project):
     """
     project（辞書型：URL, 感想, タイトル, サムネイル画像）をprojects.jsonに追記します。
-    パーミッション不足の場合は、エラーメッセージを出力します。
     """
+    # 既存のデータを読み込む
     if os.path.exists(PROJECTS_FILE):
-        with open(PROJECTS_FILE, "r", encoding="utf-8") as f:
-            try:
+        try:
+            with open(PROJECTS_FILE, "r", encoding="utf-8") as f:
                 projects = json.load(f)
-            except json.JSONDecodeError:
-                projects = []
+        except (json.JSONDecodeError, IOError) as e:
+            print(f"既存のJSON読み込みに失敗しました: {e}")
+            projects = []
     else:
         projects = []
+    
     projects.append(project)
+    
+    # データを書き込み
     try:
         with open(PROJECTS_FILE, "w", encoding="utf-8") as f:
             json.dump(projects, f, ensure_ascii=False, indent=2)
-    except PermissionError as e:
-        # パーミッション不足の場合のエラーハンドリング
-        print("エラー: projects.jsonへの書き込み権限が不足しています。")
-        print("エラー詳細:", e)
-        # 必要に応じて、ユーザーへエラーメッセージを返すなどの対応を実施
+    except IOError as e:
+        print(f"{PROJECTS_FILE}への書き込みに失敗しました: {e}")
 
 @app.route("/", methods=["GET", "POST"])
 def index():
