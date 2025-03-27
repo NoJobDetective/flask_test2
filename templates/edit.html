@@ -48,25 +48,34 @@
     <br><br>
     <label for="rating">評価:</label>
     <div class="star-rating">
-      <input type="radio" id="star5" name="rating" value="5" {% if project.rating|float == 5 %} checked {% endif %}>
+      <input type="radio" id="star5" name="rating" value="5" {% if (project.rating|default(3))|float == 5 %} checked {% endif %}>
       <label for="star5" title="5点"><i class="fas fa-star"></i></label>
-      <input type="radio" id="star4_5" name="rating" value="4.5" {% if project.rating|float == 4.5 %} checked {% endif %}>
+      
+      <input type="radio" id="star4_5" name="rating" value="4.5" {% if (project.rating|default(3))|float == 4.5 %} checked {% endif %}>
       <label for="star4_5" title="4.5点"><i class="fas fa-star-half-alt"></i></label>
-      <input type="radio" id="star4" name="rating" value="4" {% if project.rating|float == 4 %} checked {% endif %}>
+      
+      <input type="radio" id="star4" name="rating" value="4" {% if (project.rating|default(3))|float == 4 %} checked {% endif %}>
       <label for="star4" title="4点"><i class="fas fa-star"></i></label>
-      <input type="radio" id="star3_5" name="rating" value="3.5" {% if project.rating|float == 3.5 %} checked {% endif %}>
+      
+      <input type="radio" id="star3_5" name="rating" value="3.5" {% if (project.rating|default(3))|float == 3.5 %} checked {% endif %}>
       <label for="star3_5" title="3.5点"><i class="fas fa-star-half-alt"></i></label>
-      <input type="radio" id="star3" name="rating" value="3" {% if project.rating|float == 3 %} checked {% endif %}>
+      
+      <input type="radio" id="star3" name="rating" value="3" {% if (project.rating|default(3))|float == 3 %} checked {% endif %}>
       <label for="star3" title="3点"><i class="fas fa-star"></i></label>
-      <input type="radio" id="star2_5" name="rating" value="2.5" {% if project.rating|float == 2.5 %} checked {% endif %}>
+      
+      <input type="radio" id="star2_5" name="rating" value="2.5" {% if (project.rating|default(3))|float == 2.5 %} checked {% endif %}>
       <label for="star2_5" title="2.5点"><i class="fas fa-star-half-alt"></i></label>
-      <input type="radio" id="star2" name="rating" value="2" {% if project.rating|float == 2 %} checked {% endif %}>
+      
+      <input type="radio" id="star2" name="rating" value="2" {% if (project.rating|default(3))|float == 2 %} checked {% endif %}>
       <label for="star2" title="2点"><i class="fas fa-star"></i></label>
-      <input type="radio" id="star1_5" name="rating" value="1.5" {% if project.rating|float == 1.5 %} checked {% endif %}>
+      
+      <input type="radio" id="star1_5" name="rating" value="1.5" {% if (project.rating|default(3))|float == 1.5 %} checked {% endif %}>
       <label for="star1_5" title="1.5点"><i class="fas fa-star-half-alt"></i></label>
-      <input type="radio" id="star1" name="rating" value="1" {% if project.rating|float == 1 %} checked {% endif %}>
+      
+      <input type="radio" id="star1" name="rating" value="1" {% if (project.rating|default(3))|float == 1 %} checked {% endif %}>
       <label for="star1" title="1点"><i class="fas fa-star"></i></label>
-      <input type="radio" id="star0_5" name="rating" value="0.5" {% if project.rating|float == 0.5 %} checked {% endif %}>
+      
+      <input type="radio" id="star0_5" name="rating" value="0.5" {% if (project.rating|default(3))|float == 0.5 %} checked {% endif %}>
       <label for="star0_5" title="0.5点"><i class="fas fa-star-half-alt"></i></label>
     </div>
     <br><br>
