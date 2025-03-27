@@ -3,18 +3,38 @@
 <head>
   <meta charset="UTF-8">
   <title>URLメタデータ取得ツール</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <!-- QRCode.js の読み込み -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <!-- FontAwesome のCDN -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
   <style>
+    /* 全体の基本スタイル */
+    body {
+      margin: 0;
+      padding: 10px;
+      font-family: Arial, sans-serif;
+    }
+    h1, h2 {
+      text-align: center;
+    }
     /* 入力フォームのスタイル */
     form {
       margin-bottom: 30px;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    form input[type="text"],
+    form textarea {
+      width: 100%;
+      padding: 8px;
+      box-sizing: border-box;
+      font-size: 1rem;
     }
     /* 星マーク採点のスタイル（1刻み・全5点） */
     .star-rating {
-      direction: rtl;  /* 右から左に並べることでホバー効果を実現 */
+      direction: rtl;
       display: inline-block;
       font-size: 2rem;
     }
@@ -40,6 +60,9 @@
       border: 1px solid #ccc;
       padding: 10px;
       margin-bottom: 15px;
+      max-width: 800px;
+      margin-left: auto;
+      margin-right: auto;
     }
     .banner .left {
       margin-right: 15px;
@@ -86,12 +109,23 @@
       margin-top: 5px;
       font-size: 0.9em;
     }
+    /* レスポンシブ対応 */
+    @media screen and (max-width: 600px) {
+      .banner {
+        flex-direction: column;
+        text-align: center;
+      }
+      .banner .left,
+      .banner .right {
+        margin: 5px 0;
+      }
+    }
   </style>
 </head>
 <body>
   <h1>URLメタデータ取得ツール</h1>
   {% if error %}
-    <p style="color:red;">{{ error }}</p>
+    <p style="color:red; text-align:center;">{{ error }}</p>
   {% endif %}
   
   <!-- 入力フォーム -->
@@ -101,7 +135,7 @@
     <br><br>
     <label for="comment">URLに対する感想を入力してください:</label>
     <br>
-    <textarea id="comment" name="comment" rows="4" cols="50" placeholder="感想を入力してください"></textarea>
+    <textarea id="comment" name="comment" rows="4" placeholder="感想を入力してください"></textarea>
     <br><br>
     <label for="rating">評価:</label>
     <div class="star-rating">
@@ -176,7 +210,7 @@
         </script>
       {% endfor %}
     {% else %}
-      <p>入力されたデータはありません。</p>
+      <p style="text-align:center;">入力されたデータはありません。</p>
     {% endif %}
   </div>
 </body>
