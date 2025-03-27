@@ -53,6 +53,10 @@
       white-space: pre-line;
       margin-top: 5px;
     }
+    .banner .center .rating {
+      margin-top: 5px;
+      font-size: 1.2em;
+    }
     .banner .right {
       margin-left: 15px;
     }
@@ -77,6 +81,9 @@
     <br>
     <textarea id="comment" name="comment" rows="4" cols="50" placeholder="感想を入力してください"></textarea>
     <br><br>
+    <label for="rating">評価 (5点満点, 0.5刻み):</label>
+    <input type="number" id="rating" name="rating" step="0.5" min="0" max="5" value="3">
+    <br><br>
     <button type="submit">送信</button>
   </form>
   
@@ -86,7 +93,7 @@
     {% if projects %}
       {% for project in projects %}
         <div class="banner">
-          <!-- 左側：サムネイルが取得できた場合は表示、取得不可の場合はプレースホルダー -->
+          <!-- 左側：正常にサムネイル取得できた場合は画像、取得不可の場合はプレースホルダー -->
           <div class="left">
             {% if project.image %}
               <img src="{{ project.image }}" alt="サムネイル">
@@ -96,7 +103,7 @@
               </div>
             {% endif %}
           </div>
-          <!-- 中央：タイトル、リンク、感想 -->
+          <!-- 中央：タイトル、リンク、感想、評価 -->
           <div class="center">
             <div class="title">{{ project.title }}</div>
             <div class="link">
@@ -104,6 +111,9 @@
             </div>
             <div class="comment">
               {{ project.comment | replace('\n', '<br>') | safe }}
+            </div>
+            <div class="rating">
+              評価: {{ project.rating | render_stars }}
             </div>
             <!-- 編集リンク -->
             <div class="edit-link">
