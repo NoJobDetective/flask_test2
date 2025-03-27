@@ -25,6 +25,18 @@
     .banner .left img {
       width: 150px;
     }
+    /* プレースホルダー用のスタイル */
+    .placeholder {
+      width: 150px;
+      height: 100px;
+      border: 1px solid #ccc;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #f0f0f0;
+      font-size: 0.9em;
+      color: #666;
+    }
     .banner .center {
       flex: 1;
       text-align: center;
@@ -74,16 +86,14 @@
     {% if projects %}
       {% for project in projects %}
         <div class="banner">
-          <!-- 左側：error403 の場合は何も表示しない -->
+          <!-- 左側：サムネイルが取得できた場合は表示、取得不可の場合はプレースホルダー -->
           <div class="left">
-            {% if not project.error403 %}
-              {% if project.image %}
-                <img src="{{ project.image }}" alt="サムネイル">
-              {% else %}
-                <div class="link">
-                  <a href="{{ project.url }}" target="_blank">{{ project.url }}</a>
-                </div>
-              {% endif %}
+            {% if project.image %}
+              <img src="{{ project.image }}" alt="サムネイル">
+            {% else %}
+              <div class="placeholder">
+                サムネイル取得不可
+              </div>
             {% endif %}
           </div>
           <!-- 中央：タイトル、リンク、感想 -->
