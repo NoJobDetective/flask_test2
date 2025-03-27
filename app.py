@@ -86,11 +86,34 @@ def save_all_projects(projects):
     except IOError as e:
         print(f"{PROJECTS_FILE}への書き込みに失敗しました: {e}")
 
+def render_stars(rating):
+    """
+    数値評価（0～5, 0.5刻み）を星マークに変換します。
+    例：3.5 → ★★★⯨☆☆
+    ※全星は★、半星は⯨（利用環境により表示が異なる場合があります）、残りは☆。
+    """
+    try:
+        r = float(rating)
+    except:
+        r = 0.0
+    full = int(r)
+    half = 1 if (r - full) >= 0.5 else 0
+    empty = 5 - full - half
+    return "★" * full + ("⯨" if half else "") + "☆" * empty
+
+# カスタムフィルターとして登録
+app.jinja_env.filters['render_stars'] = render_stars
+
 @app.route("/", methods=["GET", "POST"])
 def index():
     if request.method == "POST":
         url_input = request.form.get("url")
         comment = request.form.get("comment")
+        rating_str = request.form.get("rating", "3")
+        try:
+            rating = float(rating_str)
+        except:
+            rating = 3.0
         metadata = get_metadata(url_input)
         if metadata:
             project = {
@@ -99,7 +122,8 @@ def index():
                 "title": metadata.get("title", ""),
                 # 403エラーの場合は image は None とし、error403 フラグを True とする
                 "image": metadata.get("image") if not metadata.get("error403", False) else None,
-                "error403": metadata.get("error403", False)
+                "error403": metadata.get("error403", False),
+                "rating": rating
             }
             projects = load_projects()
             projects.append(project)
@@ -117,6 +141,11 @@ def edit(project_index):
     if request.method == "POST":
         new_url = request.form.get("url")
         new_comment = request.form.get("comment")
+        new_rating_str = request.form.get("rating", "3")
+        try:
+            new_rating = float(new_rating_str)
+        except:
+            new_rating = 3.0
         metadata = get_metadata(new_url)
         if metadata:
             project["url"] = new_url
@@ -124,6 +153,7 @@ def edit(project_index):
             project["image"] = metadata.get("image") if not metadata.get("error403", False) else None
             project["error403"] = metadata.get("error403", False)
             project["comment"] = new_comment
+            project["rating"] = new_rating
             save_all_projects(projects)
             return redirect(url_for("index"))
         else:
