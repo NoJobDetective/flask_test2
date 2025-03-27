@@ -10,7 +10,7 @@
     form {
       margin-bottom: 30px;
     }
-    /* バナー形式で各プロジェクトを表示 */
+    /* 各プロジェクトのバナー表示 */
     .banner {
       display: flex;
       align-items: center;
@@ -44,6 +44,10 @@
     .banner .right {
       margin-left: 15px;
     }
+    .edit-link {
+      margin-top: 5px;
+      font-size: 0.9em;
+    }
   </style>
 </head>
 <body>
@@ -52,7 +56,7 @@
     <p style="color:red;">{{ error }}</p>
   {% endif %}
   
-  <!-- 入力フォーム（重複なく1箇所のみ表示） -->
+  <!-- 入力フォーム -->
   <form method="POST">
     <label for="url">URLを入力してください:</label>
     <input type="text" id="url" name="url" required>
@@ -88,6 +92,10 @@
             </div>
             <div class="comment">
               {{ project.comment | replace('\n', '<br>') | safe }}
+            </div>
+            <!-- 編集リンク -->
+            <div class="edit-link">
+              <a href="{{ url_for('edit', project_index=loop.index0) }}">編集する</a>
             </div>
           </div>
           <!-- 右側：QRコード生成用コンテナ -->
