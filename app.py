@@ -48,9 +48,9 @@ def get_metadata(url):
 @app.route("/", methods=["GET", "POST"])
 def index():
     if request.method == "POST":
-        url = request.form.get("url")
+        url = request.form.get("url", '')
         # 新たに感想の入力を取得
-        comment = request.form.get("comment")
+        comment = request.form.get("comment", '').splitlines()
         metadata = get_metadata(url)
         if metadata:
             return render_template("result.html", metadata=metadata, comment=comment)
