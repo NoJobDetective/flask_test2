@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template, url_for
+from flask import Flask, request, render_template, redirect, url_for
 import requests
 from bs4 import BeautifulSoup
 import json
@@ -49,7 +49,6 @@ def get_metadata(url):
         try:
             img_response = requests.get(image_url)
             img_response.raise_for_status()
-            # MIMEタイプをヘッダから取得（取得できなければimage/jpegとする）
             mime_type = img_response.headers.get("Content-Type", "image/jpeg")
             image_data = base64.b64encode(img_response.content).decode('utf-8')
             # Data URIスキーム形式に変換
@@ -68,35 +67,8 @@ def get_metadata(url):
         "url": url
     }
 
-def save_project(project):
-    """
-    project（辞書型：URL, 感想, タイトル, サムネイル画像）をprojects.jsonに追記します。
-    """
-    # 既存のデータを読み込む
-    if os.path.exists(PROJECTS_FILE):
-        try:
-            with open(PROJECTS_FILE, "r", encoding="utf-8") as f:
-                projects = json.load(f)
-        except (json.JSONDecodeError, IOError) as e:
-            print(f"既存のJSON読み込みに失敗しました: {e}")
-            projects = []
-    else:
-        projects = []
-    
-    projects.append(project)
-    
-    # データを書き込み
-    try:
-        with open(PROJECTS_FILE, "w", encoding="utf-8") as f:
-            json.dump(projects, f, ensure_ascii=False, indent=2)
-        print("プロジェクトが保存されました。現在のプロジェクト数:", len(projects))
-    except IOError as e:
-        print(f"{PROJECTS_FILE}への書き込みに失敗しました: {e}")
-
 def load_projects():
-    """
-    projects.jsonから既存のプロジェクトデータを読み込んで返します。
-    """
+    """ projects.json から既存のプロジェクトを読み込み """
     if os.path.exists(PROJECTS_FILE):
         try:
             with open(PROJECTS_FILE, "r", encoding="utf-8") as f:
@@ -106,28 +78,59 @@ def load_projects():
             return []
     return []
 
+def save_all_projects(projects):
+    """ projects.json に全プロジェクトを保存 """
+    try:
+        with open(PROJECTS_FILE, "w", encoding="utf-8") as f:
+            json.dump(projects, f, ensure_ascii=False, indent=2)
+        print("全プロジェクトが保存されました。現在の件数:", len(projects))
+    except IOError as e:
+        print(f"{PROJECTS_FILE}への書き込みに失敗しました: {e}")
+
 @app.route("/", methods=["GET", "POST"])
 def index():
     if request.method == "POST":
-        url = request.form.get("url")
+        url_input = request.form.get("url")
         comment = request.form.get("comment")
-        metadata = get_metadata(url)
+        metadata = get_metadata(url_input)
         if metadata:
-            # プロジェクトとしてURLと感想、タイトル、サムネイル画像（403エラーでなければ）を登録
             project = {
-                "url": url,
+                "url": url_input,
                 "comment": comment,
                 "title": metadata.get("title", ""),
+                # 403エラーの場合は画像は None として保存
                 "image": metadata.get("image") if not metadata.get("error403", False) else None
             }
-            print("保存対象プロジェクト:", project)
-            save_project(project)
-            return render_template("result.html", metadata=metadata, comment=comment)
+            projects = load_projects()
+            projects.append(project)
+            save_all_projects(projects)
+        else:
+            return render_template("index.html", error="指定されたURLからメタデータを取得できませんでした。", projects=load_projects())
+    return render_template("index.html", projects=load_projects())
+
+@app.route("/edit/<int:project_index>", methods=["GET", "POST"])
+def edit(project_index):
+    projects = load_projects()
+    if project_index < 0 or project_index >= len(projects):
+        return "プロジェクトが見つかりません", 404
+    project = projects[project_index]
+    if request.method == "POST":
+        # 編集後のURLと感想を取得
+        new_url = request.form.get("url")
+        new_comment = request.form.get("comment")
+        metadata = get_metadata(new_url)
+        if metadata:
+            # URL更新の場合はメタデータも更新
+            project["url"] = new_url
+            project["title"] = metadata.get("title", "")
+            project["image"] = metadata.get("image") if not metadata.get("error403", False) else None
+            project["comment"] = new_comment
+            save_all_projects(projects)
+            return redirect(url_for("index"))
         else:
             error_message = "指定されたURLからメタデータを取得できませんでした。"
-            return render_template("index.html", error=error_message, projects=load_projects())
-    # GETリクエスト時は既存のプロジェクトデータを読み込んで表示
-    return render_template("index.html", projects=load_projects())
+            return render_template("edit.html", project=project, index=project_index, error=error_message)
+    return render_template("edit.html", project=project, index=project_index)
 
 if __name__ == "__main__":
     app.run(debug=True)
