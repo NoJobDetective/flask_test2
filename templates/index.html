@@ -5,10 +5,32 @@
   <title>URLメタデータ取得ツール</title>
   <!-- QRCode.js の読み込み -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- FontAwesome のCDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
   <style>
     /* 入力フォームのスタイル */
     form {
       margin-bottom: 30px;
+    }
+    /* 星マーク採点のスタイル */
+    .star-rating {
+      direction: rtl;  /* 右から左に並べることでホバー効果を実現 */
+      display: inline-block;
+      font-size: 2rem;
+    }
+    .star-rating input[type="radio"] {
+      display: none;
+    }
+    .star-rating label {
+      color: #ccc;
+      cursor: pointer;
+    }
+    .star-rating input[type="radio"]:checked ~ label {
+      color: gold;
+    }
+    .star-rating label:hover,
+    .star-rating label:hover ~ label {
+      color: gold;
     }
     /* 各プロジェクトのバナー表示 */
     .banner {
@@ -53,7 +75,7 @@
       white-space: pre-line;
       margin-top: 5px;
     }
-    .banner .center .rating {
+    .banner .center .rating-display {
       margin-top: 5px;
       font-size: 1.2em;
     }
@@ -81,8 +103,30 @@
     <br>
     <textarea id="comment" name="comment" rows="4" cols="50" placeholder="感想を入力してください"></textarea>
     <br><br>
-    <label for="rating">評価 (5点満点, 0.5刻み):</label>
-    <input type="number" id="rating" name="rating" step="0.5" min="0" max="5" value="3">
+    <label for="rating">評価:</label>
+    <div class="star-rating">
+      <!-- 0.5刻みで5点満点：高い値から順に配置（デフォルトは3点） -->
+      <input type="radio" id="star5" name="rating" value="5">
+      <label for="star5" title="5点"><i class="fas fa-star"></i></label>
+      <input type="radio" id="star4_5" name="rating" value="4.5">
+      <label for="star4_5" title="4.5点"><i class="fas fa-star-half-alt"></i></label>
+      <input type="radio" id="star4" name="rating" value="4">
+      <label for="star4" title="4点"><i class="fas fa-star"></i></label>
+      <input type="radio" id="star3_5" name="rating" value="3.5">
+      <label for="star3_5" title="3.5点"><i class="fas fa-star-half-alt"></i></label>
+      <input type="radio" id="star3" name="rating" value="3" checked>
+      <label for="star3" title="3点"><i class="fas fa-star"></i></label>
+      <input type="radio" id="star2_5" name="rating" value="2.5">
+      <label for="star2_5" title="2.5点"><i class="fas fa-star-half-alt"></i></label>
+      <input type="radio" id="star2" name="rating" value="2">
+      <label for="star2" title="2点"><i class="fas fa-star"></i></label>
+      <input type="radio" id="star1_5" name="rating" value="1.5">
+      <label for="star1_5" title="1.5点"><i class="fas fa-star-half-alt"></i></label>
+      <input type="radio" id="star1" name="rating" value="1">
+      <label for="star1" title="1点"><i class="fas fa-star"></i></label>
+      <input type="radio" id="star0_5" name="rating" value="0.5">
+      <label for="star0_5" title="0.5点"><i class="fas fa-star-half-alt"></i></label>
+    </div>
     <br><br>
     <button type="submit">送信</button>
   </form>
@@ -112,7 +156,7 @@
             <div class="comment">
               {{ project.comment | replace('\n', '<br>') | safe }}
             </div>
-            <div class="rating">
+            <div class="rating-display">
               評価: {{ project.rating | render_stars }}
             </div>
             <!-- 編集リンク -->
@@ -138,8 +182,4 @@
         </script>
       {% endfor %}
     {% else %}
-      <p>入力されたデータはありません。</p>
-    {% endif %}
-  </div>
-</body>
-</html>
+      <p
