@@ -1,8 +1,12 @@
 from flask import Flask, request, render_template, url_for
 import requests
 from bs4 import BeautifulSoup
+import json
+import os
 
 app = Flask(__name__)
+
+PROJECTS_FILE = "projects.json"
 
 def get_metadata(url):
     """
@@ -45,14 +49,37 @@ def get_metadata(url):
 
     return {"error403": False, "title": title, "description": description, "image": image, "url": url}
 
+def save_project(project):
+    """
+    project（辞書型：URL, 感想, タイトル, サムネイル画像）をprojects.jsonに追記します。
+    """
+    if os.path.exists(PROJECTS_FILE):
+        with open(PROJECTS_FILE, "r", encoding="utf-8") as f:
+            try:
+                projects = json.load(f)
+            except json.JSONDecodeError:
+                projects = []
+    else:
+        projects = []
+    projects.append(project)
+    with open(PROJECTS_FILE, "w", encoding="utf-8") as f:
+        json.dump(projects, f, ensure_ascii=False, indent=2)
+
 @app.route("/", methods=["GET", "POST"])
 def index():
     if request.method == "POST":
-        url = request.form.get("url", '')
-        # 新たに感想の入力を取得
-        comment = request.form.get("comment", '').splitlines()
+        url = request.form.get("url")
+        comment = request.form.get("comment")
         metadata = get_metadata(url)
         if metadata:
+            # プロジェクトとしてURLと感想、タイトル、サムネイル画像（403エラーでなければ）を登録
+            project = {
+                "url": url,
+                "comment": comment,
+                "title": metadata.get("title", ""),
+                "image": metadata.get("image") if not metadata.get("error403", False) else None
+            }
+            save_project(project)
             return render_template("result.html", metadata=metadata, comment=comment)
         else:
             error_message = "指定されたURLからメタデータを取得できませんでした。"
