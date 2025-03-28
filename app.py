@@ -121,7 +121,8 @@ def index():
                 # 403エラーの場合は image は None とし、error403 フラグを True とする
                 "image": metadata.get("image") if not metadata.get("error403", False) else None,
                 "error403": metadata.get("error403", False),
-                "rating": rating
+                "rating": rating,
+                "likes": 0  # 新規投稿時のいいねは 0 に設定
             }
             projects = load_projects()
             projects.append(project)
@@ -158,6 +159,18 @@ def edit(project_index):
             error_message = "指定されたURLからメタデータを取得できませんでした。"
             return render_template("edit.html", project=project, index=project_index, error=error_message)
     return render_template("edit.html", project=project, index=project_index)
+
+@app.route("/like/<int:project_index>")
+def like(project_index):
+    projects = load_projects()
+    if project_index < 0 or project_index >= len(projects):
+        return "プロジェクトが見つかりません", 404
+    if "likes" in projects[project_index]:
+        projects[project_index]["likes"] += 1
+    else:
+        projects[project_index]["likes"] = 1
+    save_all_projects(projects)
+    return redirect(url_for("index"))
 
 if __name__ == "__main__":
     app.run(debug=True)
