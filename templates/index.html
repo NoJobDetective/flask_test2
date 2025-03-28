@@ -102,6 +102,15 @@
       margin-top: 5px;
       font-size: 1.2em;
     }
+    .banner .center .like-section {
+      margin-top: 5px;
+      font-size: 1rem;
+    }
+    .banner .center .like-section a {
+      margin-left: 10px;
+      text-decoration: none;
+      color: #007BFF;
+    }
     .banner .right {
       margin-left: 15px;
     }
@@ -175,7 +184,7 @@
               </div>
             {% endif %}
           </div>
-          <!-- 中央：タイトル、リンク、感想、評価 -->
+          <!-- 中央：タイトル、リンク、感想、評価、いいね -->
           <div class="center">
             <div class="title">{{ project.title }}</div>
             <div class="link">
@@ -186,6 +195,10 @@
             </div>
             <div class="rating-display">
               評価: {{ project.rating | render_stars }}
+            </div>
+            <div class="like-section">
+              いいね: {{ project.likes|default(0) }}
+              <a href="{{ url_for('like', project_index=loop.index0) }}">👍いいね</a>
             </div>
             <!-- 編集リンク -->
             <div class="edit-link">
