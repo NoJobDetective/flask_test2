@@ -32,6 +32,14 @@
       box-sizing: border-box;
       font-size: 1rem;
     }
+    /* タグ入力フィールドのスタイル */
+    .tags-input {
+      width: 100%;
+      padding: 8px;
+      box-sizing: border-box;
+      font-size: 1rem;
+      margin-bottom: 10px;
+    }
     /* 星マーク採点のスタイル（1刻み・全5点） */
     .star-rating {
       direction: rtl;
@@ -102,6 +110,11 @@
       margin-top: 5px;
       font-size: 1.2em;
     }
+    .banner .center .tags {
+      margin-top: 5px;
+      font-size: 0.9em;
+      color: #333;
+    }
     .banner .center .like-section {
       margin-top: 5px;
       font-size: 1rem;
@@ -146,6 +159,9 @@
     <br>
     <textarea id="comment" name="comment" rows="4" placeholder="感想を入力してください"></textarea>
     <br><br>
+    <label for="tags">タグ (カンマ区切り、最大5つ):</label>
+    <input type="text" id="tags" name="tags" class="tags-input" placeholder="例: Python, Flask, Web">
+    <br><br>
     <label for="rating">評価:</label>
     <div class="star-rating">
       <!-- 1刻みで5点満点：高い値から順に配置（デフォルトは3点） -->
@@ -184,7 +200,7 @@
               </div>
             {% endif %}
           </div>
-          <!-- 中央：タイトル、リンク、感想、評価、いいね -->
+          <!-- 中央：タイトル、リンク、感想、評価、タグ、いいね -->
           <div class="center">
             <div class="title">{{ project.title }}</div>
             <div class="link">
@@ -195,6 +211,9 @@
             </div>
             <div class="rating-display">
               評価: {{ project.rating | render_stars }}
+            </div>
+            <div class="tags">
+              タグ: {% if project.tags %}{{ project.tags | join(', ') }}{% else %}なし{% endif %}
             </div>
             <div class="like-section">
               いいね: {{ project.likes|default(0) }}
