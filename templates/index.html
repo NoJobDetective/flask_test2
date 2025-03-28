@@ -164,7 +164,6 @@
     <br><br>
     <label for="rating">評価:</label>
     <div class="star-rating">
-      <!-- 1刻みで5点満点：高い値から順に配置（デフォルトは3点） -->
       <input type="radio" id="star5" name="rating" value="5">
       <label for="star5" title="5点"><i class="fas fa-star"></i></label>
       
@@ -190,7 +189,6 @@
     {% if projects %}
       {% for project in projects %}
         <div class="banner">
-          <!-- 左側：正常にサムネイル取得できた場合は画像、取得不可の場合はプレースホルダー -->
           <div class="left">
             {% if project.image %}
               <img src="{{ project.image }}" alt="サムネイル">
@@ -200,7 +198,6 @@
               </div>
             {% endif %}
           </div>
-          <!-- 中央：タイトル、リンク、感想、評価、タグ、いいね -->
           <div class="center">
             <div class="title">{{ project.title }}</div>
             <div class="link">
@@ -219,17 +216,14 @@
               いいね: {{ project.likes|default(0) }}
               <a href="{{ url_for('like', project_id=project.id) }}">👍いいね</a>
             </div>
-            <!-- 編集リンク -->
             <div class="edit-link">
               <a href="{{ url_for('edit', project_id=project.id) }}">編集する</a>
             </div>
           </div>
-          <!-- 右側：QRコード生成用コンテナ -->
           <div class="right">
             <div id="qrcode{{ project.id }}"></div>
           </div>
         </div>
-        <!-- 各プロジェクトごとにQRコードを生成 -->
         <script>
           new QRCode(document.getElementById("qrcode{{ project.id }}"), {
             text: "{{ project.url }}",
