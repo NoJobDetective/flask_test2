@@ -120,7 +120,7 @@ def index():
         metadata = get_metadata(url_input)
         if metadata:
             projects = load_projects()
-            # 既存のIDのリストが空なら [0] を使い、そうでなければ最大値+1
+            # 新規プロジェクトのIDを決定（既存IDのリストが空なら [0] を使い、そうでなければ最大値+1）
             new_id = max([p.get("id", 0) for p in projects] or [0]) + 1
             project = {
                 "id": new_id,
