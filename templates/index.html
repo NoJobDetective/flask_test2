@@ -198,21 +198,21 @@
             </div>
             <div class="like-section">
               いいね: {{ project.likes|default(0) }}
-              <a href="{{ url_for('like', project_index=loop.index0) }}">👍いいね</a>
+              <a href="{{ url_for('like', project_id=project.id) }}">👍いいね</a>
             </div>
             <!-- 編集リンク -->
             <div class="edit-link">
-              <a href="{{ url_for('edit', project_index=loop.index0) }}">編集する</a>
+              <a href="{{ url_for('edit', project_id=project.id) }}">編集する</a>
             </div>
           </div>
           <!-- 右側：QRコード生成用コンテナ -->
           <div class="right">
-            <div id="qrcode{{ loop.index }}"></div>
+            <div id="qrcode{{ project.id }}"></div>
           </div>
         </div>
         <!-- 各プロジェクトごとにQRコードを生成 -->
         <script>
-          new QRCode(document.getElementById("qrcode{{ loop.index }}"), {
+          new QRCode(document.getElementById("qrcode{{ project.id }}"), {
             text: "{{ project.url }}",
             width: 128,
             height: 128,
