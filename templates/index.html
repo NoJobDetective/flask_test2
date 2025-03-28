@@ -60,11 +60,8 @@
     .star-rating label:hover ~ label {
       color: gold;
     }
-    /* 各プロジェクトのバナー表示 */
+    /* バナー全体のスタイル */
     .banner {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
       border: 1px solid #ccc;
       padding: 10px;
       margin-bottom: 15px;
@@ -72,13 +69,45 @@
       margin-left: auto;
       margin-right: auto;
     }
-    .banner .left {
-      margin-right: 15px;
+    /* 上部セクション：サムネイル、タイトル、URL、QRコード */
+    .top-section {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
     }
-    .banner .left img {
+    .top-left {
+      flex: 0 0 150px;
+      margin-right: 10px;
+    }
+    .top-left img {
       width: 150px;
     }
-    /* プレースホルダー用のスタイル */
+    .top-middle {
+      flex: 1;
+      text-align: left;
+    }
+    .top-right {
+      flex: 0 0 150px;
+      text-align: center;
+    }
+    /* 中央セクション：感想（左寄せ） */
+    .middle-section {
+      text-align: left;
+      margin-bottom: 10px;
+    }
+    /* 下部セクション：評価、タグ、いいね、編集ボタン */
+    .bottom-section {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.9em;
+    }
+    .bottom-section > div {
+      margin: 5px 0;
+    }
+    /* プレースホルダー */
     .placeholder {
       width: 150px;
       height: 100px;
@@ -90,53 +119,9 @@
       font-size: 0.9em;
       color: #666;
     }
-    .banner .center {
-      flex: 1;
-      text-align: center;
-    }
-    .banner .center .title {
-      font-size: 1.5em;
-      font-weight: bold;
-    }
-    .banner .center .link {
-      font-size: 1em;
-      color: blue;
-    }
-    .banner .center .comment {
-      white-space: pre-line;
-      margin-top: 5px;
-      text-align: left;
-      line-height: 1.2; /* 行間を調整 */
-    }
-    .banner .center .rating-display {
-      margin-top: 5px;
-      font-size: 1.2em;
-    }
-    .banner .center .tags {
-      margin-top: 5px;
-      font-size: 0.9em;
-      color: #333;
-    }
-    .banner .center .like-section {
-      margin-top: 5px;
-      font-size: 1rem;
-    }
-    .banner .center .like-section a {
-      margin-left: 10px;
-      text-decoration: none;
-      color: #007BFF;
-    }
-    .banner .right {
-      margin-left: 15px;
-    }
-    .edit-link {
-      margin-top: 5px;
-      font-size: 0.9em;
-    }
-    /* 「続きを読む」用のスタイル */
+    /* 「続きを読む」リンク */
     .read-more {
       display: block;
-      text-align: left;
       font-size: 0.9em;
       color: #007BFF;
       text-decoration: none;
@@ -144,13 +129,13 @@
     }
     /* レスポンシブ対応 */
     @media screen and (max-width: 600px) {
-      .banner {
+      .top-section {
+        flex-direction: column;
+        align-items: center;
+      }
+      .bottom-section {
         flex-direction: column;
         text-align: center;
-      }
-      .banner .left,
-      .banner .right {
-        margin: 5px 0;
       }
     }
   </style>
@@ -200,44 +185,50 @@
     {% if projects %}
       {% for project in projects %}
         <div class="banner">
-          <!-- 左側：サムネイル -->
-          <div class="left">
-            {% if project.image %}
-              <img src="{{ project.image }}" alt="サムネイル">
+          <!-- 上部セクション：サムネイル、タイトル、URL、QRコード -->
+          <div class="top-section">
+            <div class="top-left">
+              {% if project.image %}
+                <img src="{{ project.image }}" alt="サムネイル">
+              {% else %}
+                <div class="placeholder">サムネイル取得不可</div>
+              {% endif %}
+            </div>
+            <div class="top-middle">
+              <div class="title">{{ project.title }}</div>
+              <div class="link">
+                <a href="{{ project.url }}" target="_blank">{{ project.url }}</a>
+              </div>
+            </div>
+            <div class="top-right">
+              <div id="qrcode{{ project.id }}"></div>
+            </div>
+          </div>
+          <!-- 中央セクション：感想（左寄せ） -->
+          <div class="middle-section">
+            {% set lines = project.comment.split('\n') %}
+            {% if lines|length > 4 %}
+              <div class="comment-preview">
+                {% for line in lines[:4] %}
+                  {{ line }}<br>
+                {% endfor %}
+              </div>
+              <a href="#" class="read-more" onclick="this.nextElementSibling.style.display='block'; this.style.display='none'; return false;">続きを読む</a>
+              <div class="comment-full" style="display: none;">
+                {% for line in lines %}
+                  {{ line }}<br>
+                {% endfor %}
+              </div>
             {% else %}
-              <div class="placeholder">
-                サムネイル取得不可
+              <div class="comment-full">
+                {% for line in lines %}
+                  {{ line }}<br>
+                {% endfor %}
               </div>
             {% endif %}
           </div>
-          <!-- 中央：タイトル、リンク、感想、評価、タグ、いいね -->
-          <div class="center">
-            <div class="title">{{ project.title }}</div>
-            <div class="link">
-              <a href="{{ project.url }}" target="_blank">{{ project.url }}</a>
-            </div>
-            {% set lines = project.comment.split('\n') %}
-            <div class="comment">
-              {% if lines|length > 4 %}
-                <div class="comment-preview">
-                  {% for line in lines[:4] %}
-                    {{ line }}<br>
-                  {% endfor %}
-                </div>
-                <a href="#" class="read-more" onclick="this.nextElementSibling.style.display='block'; this.style.display='none'; return false;">続きを読む</a>
-                <div class="comment-full" style="display: none; text-align: left; line-height: 1.2;">
-                  {% for line in lines %}
-                    {{ line }}<br>
-                  {% endfor %}
-                </div>
-              {% else %}
-                <div class="comment-full" style="text-align: left; line-height: 1.2;">
-                  {% for line in lines %}
-                    {{ line }}<br>
-                  {% endfor %}
-                </div>
-              {% endif %}
-            </div>
+          <!-- 下部セクション：評価、タグ、いいね、編集ボタン -->
+          <div class="bottom-section">
             <div class="rating-display">
               評価: {{ project.rating | render_stars }}
             </div>
@@ -251,10 +242,6 @@
             <div class="edit-link">
               <a href="{{ url_for('edit', project_id=project.id) }}">編集する</a>
             </div>
-          </div>
-          <!-- 右側：QRコード生成用コンテナ -->
-          <div class="right">
-            <div id="qrcode{{ project.id }}"></div>
           </div>
         </div>
         <script>
