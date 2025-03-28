@@ -112,6 +112,11 @@ def index():
             rating = float(rating_str)
         except:
             rating = 3.0
+        # タグ入力（カンマ区切り）の取得と整形（最大5個）
+        tags_str = request.form.get("tags", "")
+        tags = [tag.strip() for tag in tags_str.split(",") if tag.strip()]
+        if len(tags) > 5:
+            tags = tags[:5]
         metadata = get_metadata(url_input)
         if metadata:
             projects = load_projects()
@@ -125,7 +130,8 @@ def index():
                 "image": metadata.get("image") if not metadata.get("error403", False) else None,
                 "error403": metadata.get("error403", False),
                 "rating": rating,
-                "likes": 0
+                "likes": 0,
+                "tags": tags
             }
             projects.append(project)
             save_all_projects(projects)
@@ -149,6 +155,11 @@ def edit(project_id):
             new_rating = float(new_rating_str)
         except:
             new_rating = 3.0
+        # タグ入力の更新
+        new_tags_str = request.form.get("tags", "")
+        new_tags = [tag.strip() for tag in new_tags_str.split(",") if tag.strip()]
+        if len(new_tags) > 5:
+            new_tags = new_tags[:5]
         metadata = get_metadata(new_url)
         if metadata:
             project["url"] = new_url
@@ -157,6 +168,7 @@ def edit(project_id):
             project["error403"] = metadata.get("error403", False)
             project["comment"] = new_comment
             project["rating"] = new_rating
+            project["tags"] = new_tags
             save_all_projects(projects)
             return redirect(url_for("index"))
         else:
