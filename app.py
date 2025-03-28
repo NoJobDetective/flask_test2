@@ -114,17 +114,19 @@ def index():
             rating = 3.0
         metadata = get_metadata(url_input)
         if metadata:
+            projects = load_projects()
+            # 新規プロジェクトのIDを決定（既存IDの最大値+1、なければ1）
+            new_id = max((p.get("id", 0) for p in projects), default=0) + 1
             project = {
+                "id": new_id,
                 "url": url_input,
                 "comment": comment,
                 "title": metadata.get("title", ""),
-                # 403エラーの場合は image は None とし、error403 フラグを True とする
                 "image": metadata.get("image") if not metadata.get("error403", False) else None,
                 "error403": metadata.get("error403", False),
                 "rating": rating,
                 "likes": 0
             }
-            projects = load_projects()
             projects.append(project)
             save_all_projects(projects)
         else:
@@ -133,12 +135,12 @@ def index():
     sorted_projects = sorted(load_projects(), key=lambda p: float(p.get('rating', 0)), reverse=True)
     return render_template("index.html", projects=sorted_projects)
 
-@app.route("/edit/<int:project_index>", methods=["GET", "POST"])
-def edit(project_index):
+@app.route("/edit/<int:project_id>", methods=["GET", "POST"])
+def edit(project_id):
     projects = load_projects()
-    if project_index < 0 or project_index >= len(projects):
+    project = next((p for p in projects if p.get("id") == project_id), None)
+    if not project:
         return "プロジェクトが見つかりません", 404
-    project = projects[project_index]
     if request.method == "POST":
         new_url = request.form.get("url")
         new_comment = request.form.get("comment")
@@ -159,18 +161,16 @@ def edit(project_index):
             return redirect(url_for("index"))
         else:
             error_message = "指定されたURLからメタデータを取得できませんでした。"
-            return render_template("edit.html", project=project, index=project_index, error=error_message)
-    return render_template("edit.html", project=project, index=project_index)
+            return render_template("edit.html", project=project, project_id=project_id, error=error_message)
+    return render_template("edit.html", project=project, project_id=project_id)
 
-@app.route("/like/<int:project_index>")
-def like(project_index):
+@app.route("/like/<int:project_id>")
+def like(project_id):
     projects = load_projects()
-    if project_index < 0 or project_index >= len(projects):
+    project = next((p for p in projects if p.get("id") == project_id), None)
+    if not project:
         return "プロジェクトが見つかりません", 404
-    if "likes" in projects[project_index]:
-        projects[project_index]["likes"] += 1
-    else:
-        projects[project_index]["likes"] = 1
+    project["likes"] = project.get("likes", 0) + 1
     save_all_projects(projects)
     return redirect(url_for("index"))
 
