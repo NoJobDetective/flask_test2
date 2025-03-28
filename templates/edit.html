@@ -65,7 +65,6 @@
     <br><br>
     <label for="rating">評価:</label>
     <div class="star-rating">
-      <!-- 1刻みで5点満点：降順に並べる。既存の評価値がなければ3点をデフォルトとする -->
       <input type="radio" id="star5" name="rating" value="5" {% if (project.rating|default(3))|float == 5 %} checked {% endif %}>
       <label for="star5" title="5点"><i class="fas fa-star"></i></label>
       
