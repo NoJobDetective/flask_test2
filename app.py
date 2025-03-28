@@ -122,14 +122,16 @@ def index():
                 "image": metadata.get("image") if not metadata.get("error403", False) else None,
                 "error403": metadata.get("error403", False),
                 "rating": rating,
-                "likes": 0  # 新規投稿時のいいねは 0 に設定
+                "likes": 0
             }
             projects = load_projects()
             projects.append(project)
             save_all_projects(projects)
         else:
-            return render_template("index.html", error="指定されたURLからメタデータを取得できませんでした。", projects=load_projects())
-    return render_template("index.html", projects=load_projects())
+            sorted_projects = sorted(load_projects(), key=lambda p: float(p.get('rating', 0)), reverse=True)
+            return render_template("index.html", error="指定されたURLからメタデータを取得できませんでした。", projects=sorted_projects)
+    sorted_projects = sorted(load_projects(), key=lambda p: float(p.get('rating', 0)), reverse=True)
+    return render_template("index.html", projects=sorted_projects)
 
 @app.route("/edit/<int:project_index>", methods=["GET", "POST"])
 def edit(project_index):
