@@ -105,7 +105,8 @@
     .banner .center .comment {
       white-space: pre-line;
       margin-top: 5px;
-      text-align: left; /* 左寄せ */
+      text-align: left;
+      line-height: 1.2; /* 行間を調整 */
     }
     .banner .center .rating-display {
       margin-top: 5px;
@@ -199,7 +200,7 @@
     {% if projects %}
       {% for project in projects %}
         <div class="banner">
-          <!-- 左側：正常にサムネイル取得できた場合は画像、取得不可の場合はプレースホルダー -->
+          <!-- 左側：サムネイル -->
           <div class="left">
             {% if project.image %}
               <img src="{{ project.image }}" alt="サムネイル">
@@ -224,13 +225,13 @@
                   {% endfor %}
                 </div>
                 <a href="#" class="read-more" onclick="this.nextElementSibling.style.display='block'; this.style.display='none'; return false;">続きを読む</a>
-                <div class="comment-full" style="display: none; text-align: left;">
+                <div class="comment-full" style="display: none; text-align: left; line-height: 1.2;">
                   {% for line in lines %}
                     {{ line }}<br>
                   {% endfor %}
                 </div>
               {% else %}
-                <div class="comment-full" style="text-align: left;">
+                <div class="comment-full" style="text-align: left; line-height: 1.2;">
                   {% for line in lines %}
                     {{ line }}<br>
                   {% endfor %}
