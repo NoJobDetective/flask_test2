@@ -105,6 +105,7 @@
     .banner .center .comment {
       white-space: pre-line;
       margin-top: 5px;
+      text-align: left; /* 左寄せ */
     }
     .banner .center .rating-display {
       margin-top: 5px;
@@ -130,6 +131,15 @@
     .edit-link {
       margin-top: 5px;
       font-size: 0.9em;
+    }
+    /* 「続きを読む」用のスタイル */
+    .read-more {
+      display: block;
+      text-align: left;
+      font-size: 0.9em;
+      color: #007BFF;
+      text-decoration: none;
+      cursor: pointer;
     }
     /* レスポンシブ対応 */
     @media screen and (max-width: 600px) {
@@ -189,6 +199,7 @@
     {% if projects %}
       {% for project in projects %}
         <div class="banner">
+          <!-- 左側：正常にサムネイル取得できた場合は画像、取得不可の場合はプレースホルダー -->
           <div class="left">
             {% if project.image %}
               <img src="{{ project.image }}" alt="サムネイル">
@@ -198,13 +209,33 @@
               </div>
             {% endif %}
           </div>
+          <!-- 中央：タイトル、リンク、感想、評価、タグ、いいね -->
           <div class="center">
             <div class="title">{{ project.title }}</div>
             <div class="link">
               <a href="{{ project.url }}" target="_blank">{{ project.url }}</a>
             </div>
+            {% set lines = project.comment.split('\n') %}
             <div class="comment">
-              {{ project.comment | replace('\n', '<br>') | safe }}
+              {% if lines|length > 4 %}
+                <div class="comment-preview">
+                  {% for line in lines[:4] %}
+                    {{ line }}<br>
+                  {% endfor %}
+                </div>
+                <a href="#" class="read-more" onclick="this.nextElementSibling.style.display='block'; this.style.display='none'; return false;">続きを読む</a>
+                <div class="comment-full" style="display: none; text-align: left;">
+                  {% for line in lines %}
+                    {{ line }}<br>
+                  {% endfor %}
+                </div>
+              {% else %}
+                <div class="comment-full" style="text-align: left;">
+                  {% for line in lines %}
+                    {{ line }}<br>
+                  {% endfor %}
+                </div>
+              {% endif %}
             </div>
             <div class="rating-display">
               評価: {{ project.rating | render_stars }}
@@ -220,6 +251,7 @@
               <a href="{{ url_for('edit', project_id=project.id) }}">編集する</a>
             </div>
           </div>
+          <!-- 右側：QRコード生成用コンテナ -->
           <div class="right">
             <div id="qrcode{{ project.id }}"></div>
           </div>
