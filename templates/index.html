@@ -96,6 +96,27 @@
       text-align: left;
       margin-bottom: 10px;
     }
+    /* コメントエリア（開閉対象） */
+    .comment-container {
+      transition: max-height 0.3s ease;
+    }
+    .comment-container.collapsed {
+      max-height: 60px;
+      overflow: hidden;
+    }
+    .toggle-comment {
+      display: inline-block;
+      margin-top: 5px;
+      padding: 4px 8px;
+      background-color: #007BFF;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .toggle-comment:hover {
+      background-color: #0056b3;
+    }
     /* 下部セクション */
     .bottom-section {
       display: flex;
@@ -107,25 +128,9 @@
     .bottom-section > div {
       margin: 5px 0;
     }
-    /* プレースホルダー */
-    .placeholder {
-      width: 150px;
-      height: 100px;
-      border: 1px solid #ccc;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background-color: #f0f0f0;
-      font-size: 0.9em;
-      color: #666;
-    }
-    /* 「続きを読む」リンク */
-    .read-more {
-      display: block;
-      font-size: 0.9em;
-      color: #007BFF;
-      text-decoration: none;
-      cursor: pointer;
+    /* 登録日表示 */
+    .reg-date {
+      font-weight: bold;
     }
     /* タグボックスのスタイル */
     .tag-box {
@@ -150,8 +155,12 @@
 </head>
 <body>
   <h1>URLメタデータ取得ツール</h1>
-  <!-- 管理者権限でログインするリンク -->
-  {% if not session.get("master") %}
+  <!-- 管理者権限の場合、一般ユーザ権限で閲覧するリンクを表示 -->
+  {% if session.get("master") %}
+    <div style="text-align: center; margin-bottom: 10px;">
+      <a href="{{ url_for('admin_logout') }}">一般ユーザ権限で閲覧する</a>
+    </div>
+  {% else %}
     <div style="text-align: center; margin-bottom: 10px;">
       <a href="{{ url_for('admin_login') }}">管理者権限でログイン</a>
     </div>
@@ -218,31 +227,20 @@
               <div id="qrcode{{ project.id }}"></div>
             </div>
           </div>
-          <!-- 中央セクション：感想（左寄せ） -->
+          <!-- 中央セクション：感想 -->
           <div class="middle-section">
-            {% set lines = project.comment.split('\n') %}
-            {% if lines|length > 4 %}
-              <div class="comment-preview">
-                {% for line in lines[:4] %}
-                  {{ line }}<br>
-                {% endfor %}
-              </div>
-              <a href="#" class="read-more" onclick="this.nextElementSibling.style.display='block'; this.style.display='none'; return false;">続きを読む</a>
-              <div class="comment-full" style="display: none;">
-                {% for line in lines %}
-                  {{ line }}<br>
-                {% endfor %}
-              </div>
-            {% else %}
-              <div class="comment-full">
-                {% for line in lines %}
-                  {{ line }}<br>
-                {% endfor %}
-              </div>
-            {% endif %}
+            <div class="comment-container collapsed">
+              {% for line in project.comment.split('\n') %}
+                {{ line }}<br>
+              {% endfor %}
+            </div>
+            <button type="button" class="toggle-comment" onclick="toggleComment(this)">タップで開く</button>
           </div>
-          <!-- 下部セクション：評価、タグ、いいね、編集、削除（masterの場合） -->
+          <!-- 下部セクション：登録日、評価、タグ、いいね、編集、削除 -->
           <div class="bottom-section">
+            <div class="reg-date">
+              登録日: {{ project['登録日'] }}
+            </div>
             <div class="rating-display">
               評価: {{ project.rating | render_stars }}
             </div>
@@ -307,6 +305,17 @@
       .catch(error => {
         console.error("Error:", error);
       });
+    }
+    
+    function toggleComment(button) {
+      var commentContainer = button.previousElementSibling;
+      if (commentContainer.classList.contains('collapsed')) {
+        commentContainer.classList.remove('collapsed');
+        button.textContent = 'タップで閉じる';
+      } else {
+        commentContainer.classList.add('collapsed');
+        button.textContent = 'タップで開く';
+      }
     }
   </script>
 </body>
