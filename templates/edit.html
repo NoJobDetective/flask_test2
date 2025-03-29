@@ -72,7 +72,7 @@
     <textarea id="comment" name="comment" rows="4">{{ project.comment }}</textarea>
     <br><br>
     <label for="tags">タグ (カンマ区切り、最大5つ):</label>
-    <input type="text" id="tags" name="tags" class="tags-input" value="{% if project.tags %}{{ project.tags | join(', ') }}{% endif %}">
+    <input type="text" id="tags" name="tags" class="tags-input" value="{{ project.tags|default([])|join(', ') }}">
     <br><br>
     <label for="rating">評価:</label>
     <div class="star-rating">
