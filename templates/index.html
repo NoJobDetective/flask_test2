@@ -139,6 +139,17 @@
       padding: 2px 4px;
       border-radius: 4px;
       margin-right: 4px;
+      margin-bottom: 4px;
+    }
+    /* タグの独立表示 */
+    .tags {
+      margin-top: 10px;
+    }
+    .tag-label {
+      font-weight: bold;
+    }
+    .tag-list {
+      margin-top: 5px;
     }
     /* レスポンシブ対応 */
     @media screen and (max-width: 600px) {
@@ -229,30 +240,29 @@
           </div>
           <!-- 中央セクション：感想 -->
           <div class="middle-section">
-            <div class="comment-container collapsed">
-              {% for line in project.comment.split('\n') %}
-                {{ line }}<br>
-              {% endfor %}
-            </div>
-            <button type="button" class="toggle-comment" onclick="toggleComment(this)">タップで開く</button>
+            {% set lines = project.comment.split('\n') %}
+            {% if lines|length > 4 %}
+              <div class="comment-container collapsed">
+                {% for line in lines %}
+                  {{ line }}<br>
+                {% endfor %}
+              </div>
+              <button type="button" class="toggle-comment" onclick="toggleComment(this)">タップで開く</button>
+            {% else %}
+              <div class="comment-container">
+                {% for line in lines %}
+                  {{ line }}<br>
+                {% endfor %}
+              </div>
+            {% endif %}
           </div>
-          <!-- 下部セクション：登録日、評価、タグ、いいね、編集、削除 -->
+          <!-- 下部セクション：登録日、評価、いいね、編集、削除 -->
           <div class="bottom-section">
             <div class="reg-date">
               登録日: {{ project['登録日'] }}
             </div>
             <div class="rating-display">
               評価: {{ project.rating | render_stars }}
-            </div>
-            <div class="tags">
-              タグ: 
-              {% if project.tags %}
-                {% for tag in project.tags %}
-                  <span class="tag-box">{{ tag }}</span>
-                {% endfor %}
-              {% else %}
-                なし
-              {% endif %}
             </div>
             <div class="like-section">
               いいね: <span id="like-count-{{ project.id }}">{{ project.likes|default(0) }}</span>
@@ -268,6 +278,19 @@
                 <a href="{{ url_for('delete', project_id=project.id) }}" onclick="return confirm('本当に削除しますか？');">削除する</a>
               </div>
             {% endif %}
+          </div>
+          <!-- タグ表示専用のDIV（独立表示） -->
+          <div class="tags">
+            <div class="tag-label">タグ:</div>
+            <div class="tag-list">
+              {% if project.tags %}
+                {% for tag in project.tags %}
+                  <span class="tag-box">{{ tag }}</span>
+                {% endfor %}
+              {% else %}
+                <span>なし</span>
+              {% endif %}
+            </div>
           </div>
         </div>
         <script>
@@ -308,11 +331,24 @@
     }
     
     function toggleComment(button) {
+      // クリックされたコメントエリアを取得
       var commentContainer = button.previousElementSibling;
+      // もしクリックされたエリアが閉じているなら
       if (commentContainer.classList.contains('collapsed')) {
+        // すべてのコメントエリアと対応ボタンを閉じる
+        var allContainers = document.querySelectorAll('.comment-container');
+        var allButtons = document.querySelectorAll('.toggle-comment');
+        allContainers.forEach(function(container) {
+          container.classList.add('collapsed');
+        });
+        allButtons.forEach(function(btn) {
+          btn.textContent = 'タップで開く';
+        });
+        // クリックされたエリアを開く
         commentContainer.classList.remove('collapsed');
         button.textContent = 'タップで閉じる';
       } else {
+        // クリックされたエリアを閉じる
         commentContainer.classList.add('collapsed');
         button.textContent = 'タップで開く';
       }
