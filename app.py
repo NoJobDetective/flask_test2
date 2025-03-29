@@ -88,7 +88,7 @@ def render_stars(rating):
     except:
         r = 0.0
     full = int(r)
-    empty = 5 - full
+    empty = 10 - full
     return "★" * full + "☆" * empty
 
 app.jinja_env.filters['render_stars'] = render_stars
@@ -99,11 +99,11 @@ def index():
     if request.method == "POST" and "url" in request.form:
         url_input = request.form.get("url")
         comment = request.form.get("comment")
-        rating_str = request.form.get("rating", "3")
+        rating_str = request.form.get("rating", "5")
         try:
             rating = float(rating_str)
         except:
-            rating = 3.0
+            rating = 5.0
         tags_str = request.form.get("tags", "")
         tags = [tag.strip() for tag in tags_str.split(",") if tag.strip()]
         if len(tags) > 5:
@@ -122,7 +122,7 @@ def index():
                 "rating": rating,
                 "likes": 0,
                 "tags": tags,
-                "登録日": datetime.now(JST).strftime("%Y-%m-%d")  # 登録日の自動入力（JST、日付のみ）
+                "登録日": datetime.now(JST).strftime("%Y-%m-%d")  # 登録日(JST、日付のみ)
             }
             projects.append(project)
             save_all_projects(projects)
@@ -154,11 +154,11 @@ def edit(project_id):
     if request.method == "POST":
         new_url = request.form.get("url")
         new_comment = request.form.get("comment")
-        new_rating_str = request.form.get("rating", "3")
+        new_rating_str = request.form.get("rating", "5")
         try:
             new_rating = float(new_rating_str)
         except:
-            new_rating = 3.0
+            new_rating = 5.0
         new_tags_str = request.form.get("tags", "")
         new_tags = [tag.strip() for tag in new_tags_str.split(",") if tag.strip()]
         if len(new_tags) > 5:
