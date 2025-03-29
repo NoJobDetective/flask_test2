@@ -4,7 +4,10 @@ from bs4 import BeautifulSoup
 import json
 import os
 import base64
-from datetime import datetime  # 登録日の自動入力用
+from datetime import datetime, timezone, timedelta  # 登録日の自動入力用
+
+# JSTタイムゾーンの設定
+JST = timezone(timedelta(hours=9))
 
 app = Flask(__name__)
 app.secret_key = "mysecretkey"  # 適宜変更してください
@@ -119,7 +122,7 @@ def index():
                 "rating": rating,
                 "likes": 0,
                 "tags": tags,
-                "登録日": datetime.now().strftime("%Y-%m-%d %H:%M:%S")  # 登録日の自動入力
+                "登録日": datetime.now(JST).strftime("%Y-%m-%d")  # 登録日の自動入力（JST、日付のみ）
             }
             projects.append(project)
             save_all_projects(projects)
