@@ -1,32 +1,29 @@
-from flask import Flask, request, render_template, redirect, url_for
+from flask import Flask, request, render_template, redirect, url_for, session, jsonify
 import requests
 from bs4 import BeautifulSoup
 import json
 import os
 import base64
+from datetime import datetime  # 登録日の自動入力用
 
 app = Flask(__name__)
+app.secret_key = "mysecretkey"  # 適宜変更してください
 
-# app.py のあるディレクトリを基準に projects.json の絶対パスを指定
+# projects.json の絶対パス
 PROJECTS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "projects.json")
 
 def get_metadata(url):
-    """
-    指定したURLからウェブページのメタデータ（タイトル、説明、画像）を取得する関数です。
-    ※403エラーの場合は error403 フラグを True として返します。
-    """
     try:
         response = requests.get(url)
         if response.status_code == 403:
             return {"error403": True, "url": url}
         response.raise_for_status()
     except Exception as e:
-        print(f"URLの取得中にエラーが発生しました: {e}")
+        print(f"URL取得中のエラー: {e}")
         return None
 
     soup = BeautifulSoup(response.text, 'html.parser')
     
-    # タイトルの取得
     title_tag = soup.find('meta', property='og:title')
     if title_tag and title_tag.get('content'):
         title = title_tag.get('content')
@@ -34,7 +31,6 @@ def get_metadata(url):
         title_tag = soup.find('title')
         title = title_tag.string.strip() if title_tag else "タイトルが見つかりませんでした"
     
-    # 説明文の取得（例）
     desc_tag = soup.find('meta', property='og:description')
     if desc_tag and desc_tag.get('content'):
         description = desc_tag.get('content')
@@ -42,7 +38,6 @@ def get_metadata(url):
         desc_tag = soup.find('meta', attrs={'name': 'description'})
         description = desc_tag.get('content') if desc_tag else "説明が見つかりませんでした"
     
-    # サムネイル画像の取得（画像URLから画像をダウンロードしてBase64エンコード）
     image_tag = soup.find('meta', property='og:image')
     if image_tag and image_tag.get('content'):
         image_url = image_tag.get('content')
@@ -53,7 +48,7 @@ def get_metadata(url):
             image_data = base64.b64encode(img_response.content).decode('utf-8')
             image_data = f"data:{mime_type};base64,{image_data}"
         except Exception as e:
-            print(f"画像のダウンロード中にエラーが発生しました: {e}")
+            print(f"画像ダウンロード中のエラー: {e}")
             image_data = None
     else:
         image_data = None
@@ -67,30 +62,24 @@ def get_metadata(url):
     }
 
 def load_projects():
-    """ projects.json から既存のプロジェクトを読み込み """
     if os.path.exists(PROJECTS_FILE):
         try:
             with open(PROJECTS_FILE, "r", encoding="utf-8") as f:
                 return json.load(f)
         except Exception as e:
-            print(f"プロジェクトの読み込みに失敗しました: {e}")
+            print(f"プロジェクト読み込みエラー: {e}")
             return []
     return []
 
 def save_all_projects(projects):
-    """ projects.json に全プロジェクトを保存 """
     try:
         with open(PROJECTS_FILE, "w", encoding="utf-8") as f:
             json.dump(projects, f, ensure_ascii=False, indent=2)
-        print("全プロジェクトが保存されました。現在の件数:", len(projects))
+        print("保存件数:", len(projects))
     except IOError as e:
-        print(f"{PROJECTS_FILE}への書き込みに失敗しました: {e}")
+        print(f"保存エラー: {e}")
 
 def render_stars(rating):
-    """
-    数値評価（0～5, 1刻み）を星マークに変換します。
-    例：3 → ★★★☆☆
-    """
     try:
         r = float(rating)
     except:
@@ -99,12 +88,12 @@ def render_stars(rating):
     empty = 5 - full
     return "★" * full + "☆" * empty
 
-# カスタムフィルターとして登録
 app.jinja_env.filters['render_stars'] = render_stars
 
+# ログイン認証は管理者権限でログインのリンクから行います
 @app.route("/", methods=["GET", "POST"])
 def index():
-    if request.method == "POST":
+    if request.method == "POST" and "url" in request.form:
         url_input = request.form.get("url")
         comment = request.form.get("comment")
         rating_str = request.form.get("rating", "3")
@@ -112,7 +101,6 @@ def index():
             rating = float(rating_str)
         except:
             rating = 3.0
-        # タグ入力（カンマ区切り）の取得と整形（最大5個）
         tags_str = request.form.get("tags", "")
         tags = [tag.strip() for tag in tags_str.split(",") if tag.strip()]
         if len(tags) > 5:
@@ -120,7 +108,6 @@ def index():
         metadata = get_metadata(url_input)
         if metadata:
             projects = load_projects()
-            # 新規プロジェクトのIDを決定（既存IDのリストが空なら [0] を使い、そうでなければ最大値+1）
             new_id = max([p.get("id", 0) for p in projects] or [0]) + 1
             project = {
                 "id": new_id,
@@ -131,7 +118,8 @@ def index():
                 "error403": metadata.get("error403", False),
                 "rating": rating,
                 "likes": 0,
-                "tags": tags
+                "tags": tags,
+                "登録日": datetime.now().strftime("%Y-%m-%d %H:%M:%S")  # 登録日の自動入力
             }
             projects.append(project)
             save_all_projects(projects)
@@ -140,6 +128,13 @@ def index():
             return render_template("index.html", error="指定されたURLからメタデータを取得できませんでした。", projects=sorted_projects)
     sorted_projects = sorted(load_projects(), key=lambda p: float(p.get('rating', 0)), reverse=True)
     return render_template("index.html", projects=sorted_projects)
+
+# 管理者権限でログインするためのルートを追加
+@app.route("/admin-login")
+def admin_login():
+    session["authenticated"] = True
+    session["master"] = True
+    return redirect(url_for("index"))
 
 @app.route("/edit/<int:project_id>", methods=["GET", "POST"])
 def edit(project_id):
@@ -155,7 +150,6 @@ def edit(project_id):
             new_rating = float(new_rating_str)
         except:
             new_rating = 3.0
-        # タグ入力の更新
         new_tags_str = request.form.get("tags", "")
         new_tags = [tag.strip() for tag in new_tags_str.split(",") if tag.strip()]
         if len(new_tags) > 5:
@@ -176,14 +170,34 @@ def edit(project_id):
             return render_template("edit.html", project=project, project_id=project_id, error=error_message)
     return render_template("edit.html", project=project, project_id=project_id)
 
-@app.route("/like/<int:project_id>")
+@app.route("/like/<int:project_id>", methods=["POST"])
 def like(project_id):
     projects = load_projects()
     project = next((p for p in projects if p.get("id") == project_id), None)
     if not project:
-        return "プロジェクトが見つかりません", 404
+        return jsonify({"error": "プロジェクトが見つかりません"}), 404
     project["likes"] = project.get("likes", 0) + 1
     save_all_projects(projects)
+    return jsonify({"likes": project["likes"]})
+
+@app.route("/unlike/<int:project_id>", methods=["POST"])
+def unlike(project_id):
+    projects = load_projects()
+    project = next((p for p in projects if p.get("id") == project_id), None)
+    if not project:
+        return jsonify({"error": "プロジェクトが見つかりません"}), 404
+    if project.get("likes", 0) > 0:
+        project["likes"] = project.get("likes", 0) - 1
+    save_all_projects(projects)
+    return jsonify({"likes": project["likes"]})
+
+@app.route("/delete/<int:project_id>")
+def delete(project_id):
+    if not session.get("master"):
+        return "削除権限がありません", 403
+    projects = load_projects()
+    new_projects = [p for p in projects if p.get("id") != project_id]
+    save_all_projects(new_projects)
     return redirect(url_for("index"))
 
 if __name__ == "__main__":
