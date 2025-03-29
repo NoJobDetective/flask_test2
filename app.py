@@ -129,11 +129,17 @@ def index():
     sorted_projects = sorted(load_projects(), key=lambda p: float(p.get('rating', 0)), reverse=True)
     return render_template("index.html", projects=sorted_projects)
 
-# 管理者権限でログインするためのルートを追加
+# 管理者権限でログインするためのルート
 @app.route("/admin-login")
 def admin_login():
     session["authenticated"] = True
     session["master"] = True
+    return redirect(url_for("index"))
+
+# 管理者権限を解除して一般ユーザとして閲覧するためのルート
+@app.route("/admin-logout")
+def admin_logout():
+    session.pop("master", None)
     return redirect(url_for("index"))
 
 @app.route("/edit/<int:project_id>", methods=["GET", "POST"])
