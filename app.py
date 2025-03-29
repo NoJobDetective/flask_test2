@@ -129,6 +129,8 @@ def index():
             }
             projects.append(project)
             save_all_projects(projects)
+            # POST後はリダイレクトして重複投稿を防止
+            return redirect(url_for("index"))
         else:
             sorted_projects = sorted(load_projects(), key=lambda p: float(p.get('rating', 0)), reverse=True)
             return render_template("index.html", error="指定されたURLからメタデータを取得できませんでした。", projects=sorted_projects)
