@@ -4,6 +4,7 @@ from bs4 import BeautifulSoup
 import json
 import os
 import base64
+import re  # 改行コード統一のため追加
 from datetime import datetime, timezone, timedelta  # 登録日の自動入力用
 
 # JSTタイムゾーンの設定
@@ -99,6 +100,8 @@ def index():
     if request.method == "POST" and "url" in request.form:
         url_input = request.form.get("url")
         comment = request.form.get("comment")
+        # 複数改行を1つに統一
+        comment = re.sub(r'\n+', '\n', comment)
         rating_str = request.form.get("rating", "5")
         try:
             rating = float(rating_str)
@@ -154,6 +157,7 @@ def edit(project_id):
     if request.method == "POST":
         new_url = request.form.get("url")
         new_comment = request.form.get("comment")
+        new_comment = re.sub(r'\n+', '\n', new_comment)
         new_rating_str = request.form.get("rating", "5")
         try:
             new_rating = float(new_rating_str)
