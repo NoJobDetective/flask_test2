@@ -4,8 +4,9 @@ from bs4 import BeautifulSoup
 import json
 import os
 import base64
-import re  # 改行コード統一のため追加
+import re  # 改行コード統一用
 from datetime import datetime, timezone, timedelta  # 登録日の自動入力用
+from urllib.parse import urlparse  # URL解析用
 
 # JSTタイムゾーンの設定
 JST = timezone(timedelta(hours=9))
@@ -20,11 +21,32 @@ def get_metadata(url):
     try:
         response = requests.get(url)
         if response.status_code == 403:
-            return {"error403": True, "url": url}
+            # メタデータ取得がブロックされた場合もフォールバック情報を返す
+            parsed = urlparse(url)
+            domain = parsed.netloc
+            if domain.startswith("www."):
+                domain = domain[4:]
+            return {
+                "error403": True,
+                "title": domain,
+                "description": "説明が見つかりませんでした",
+                "image": None,
+                "url": url
+            }
         response.raise_for_status()
     except Exception as e:
         print(f"URL取得中のエラー: {e}")
-        return None
+        parsed = urlparse(url)
+        domain = parsed.netloc
+        if domain.startswith("www."):
+            domain = domain[4:]
+        return {
+            "error403": True,
+            "title": domain,
+            "description": "説明が見つかりませんでした",
+            "image": None,
+            "url": url
+        }
 
     soup = BeautifulSoup(response.text, 'html.parser')
     
@@ -94,13 +116,13 @@ def render_stars(rating):
 
 app.jinja_env.filters['render_stars'] = render_stars
 
-# ログイン認証は管理者権限でログインのリンクから行います
+# POST送信後は必ずリダイレクト（PRGパターン）して重複投稿を防止
 @app.route("/", methods=["GET", "POST"])
 def index():
     if request.method == "POST" and "url" in request.form:
         url_input = request.form.get("url")
         comment = request.form.get("comment")
-        # 複数改行を1つに統一
+        # 複数の改行コードを1つに統一
         comment = re.sub(r'\n+', '\n', comment)
         rating_str = request.form.get("rating", "5")
         try:
@@ -120,7 +142,7 @@ def index():
                 "url": url_input,
                 "comment": comment,
                 "title": metadata.get("title", ""),
-                "image": metadata.get("image") if not metadata.get("error403", False) else None,
+                "image": metadata.get("image"),  # imageがNoneの場合はサムネイル取得不可となる
                 "error403": metadata.get("error403", False),
                 "rating": rating,
                 "likes": 0,
@@ -129,7 +151,6 @@ def index():
             }
             projects.append(project)
             save_all_projects(projects)
-            # POST後はリダイレクトして重複投稿を防止
             return redirect(url_for("index"))
         else:
             sorted_projects = sorted(load_projects(), key=lambda p: float(p.get('rating', 0)), reverse=True)
@@ -137,14 +158,12 @@ def index():
     sorted_projects = sorted(load_projects(), key=lambda p: float(p.get('rating', 0)), reverse=True)
     return render_template("index.html", projects=sorted_projects)
 
-# 管理者権限でログインするためのルート
 @app.route("/admin-login")
 def admin_login():
     session["authenticated"] = True
     session["master"] = True
     return redirect(url_for("index"))
 
-# 管理者権限を解除して一般ユーザとして閲覧するためのルート
 @app.route("/admin-logout")
 def admin_logout():
     session.pop("master", None)
@@ -173,7 +192,7 @@ def edit(project_id):
         if metadata:
             project["url"] = new_url
             project["title"] = metadata.get("title", "")
-            project["image"] = metadata.get("image") if not metadata.get("error403", False) else None
+            project["image"] = metadata.get("image")
             project["error403"] = metadata.get("error403", False)
             project["comment"] = new_comment
             project["rating"] = new_rating
