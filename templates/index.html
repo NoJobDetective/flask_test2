@@ -72,16 +72,16 @@
       margin-left: auto;
       margin-right: auto;
     }
-    /* 上部セクション */
+    /* 上部セクション：flexレイアウトにgapを追加 */
     .top-section {
       display: flex;
       justify-content: space-between;
       align-items: center;
+      gap: 10px;
       margin-bottom: 10px;
     }
     .top-left {
       flex: 0 0 150px;
-      margin-right: 10px;
     }
     .top-left img {
       width: 150px;
@@ -94,7 +94,7 @@
       flex: 0 0 150px;
       text-align: center;
     }
-    /* URLリンクのスタイル */
+    /* URLリンクの折り返し */
     .link a {
       word-break: break-all;
     }
@@ -354,7 +354,7 @@
       var commentContainer = button.previousElementSibling;
       var banner = button.closest('.banner');
       if (commentContainer.classList.contains('collapsed')) {
-        // 閉じている他のエリアとボタンを全てリセット
+        // 他の開いているエリアを全て閉じる
         var allContainers = document.querySelectorAll('.comment-container');
         var allToggleButtons = document.querySelectorAll('.toggle-comment');
         var allPrintButtons = document.querySelectorAll('.print-preview-btn');
@@ -367,7 +367,7 @@
         allPrintButtons.forEach(function(btn) {
           btn.remove();
         });
-        // 展開処理：エリアを展開し、ボタンのテキストを変更
+        // 開く処理
         commentContainer.classList.remove('collapsed');
         button.textContent = 'タップで閉じる';
         // バナー全体の先頭が見えるようスクロール
@@ -394,8 +394,8 @@
     
     function printPreview(printBtn) {
       var banner = printBtn.closest('.banner');
-      // 印刷対象はバナー全体。印刷時、タブで閉じるボタンと印刷プレビュー表示ボタンは
-      // 表示上は非表示にする必要はあるが、実際の処理ではそのまま出力します。
+      // 印刷対象はバナー全体。印刷時は「タップで閉じる」ボタンと「印刷プレビューを表示」ボタンを表示上は非表示にする必要はあるが、
+      // 実際の処理ではそのまま出力します。
       html2canvas(banner).then(canvas => {
         const imgData = canvas.toDataURL('image/png');
         const { jsPDF } = window.jspdf;
