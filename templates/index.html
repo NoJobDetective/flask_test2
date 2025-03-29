@@ -69,7 +69,7 @@
       margin-left: auto;
       margin-right: auto;
     }
-    /* 上部セクション：サムネイル、タイトル、URL、QRコード */
+    /* 上部セクション */
     .top-section {
       display: flex;
       justify-content: space-between;
@@ -91,12 +91,12 @@
       flex: 0 0 150px;
       text-align: center;
     }
-    /* 中央セクション：感想（左寄せ） */
+    /* 中央セクション：感想 */
     .middle-section {
       text-align: left;
       margin-bottom: 10px;
     }
-    /* 下部セクション：評価、タグ、いいね、編集ボタン */
+    /* 下部セクション */
     .bottom-section {
       display: flex;
       flex-wrap: wrap;
@@ -127,6 +127,14 @@
       text-decoration: none;
       cursor: pointer;
     }
+    /* タグボックスのスタイル */
+    .tag-box {
+      display: inline-block;
+      border: 1px solid #ccc;
+      padding: 2px 4px;
+      border-radius: 4px;
+      margin-right: 4px;
+    }
     /* レスポンシブ対応 */
     @media screen and (max-width: 600px) {
       .top-section {
@@ -142,6 +150,12 @@
 </head>
 <body>
   <h1>URLメタデータ取得ツール</h1>
+  <!-- 管理者権限でログインするリンク -->
+  {% if not session.get("master") %}
+    <div style="text-align: center; margin-bottom: 10px;">
+      <a href="{{ url_for('admin_login') }}">管理者権限でログイン</a>
+    </div>
+  {% endif %}
   {% if error %}
     <p style="color:red; text-align:center;">{{ error }}</p>
   {% endif %}
@@ -227,21 +241,35 @@
               </div>
             {% endif %}
           </div>
-          <!-- 下部セクション：評価、タグ、いいね、編集ボタン -->
+          <!-- 下部セクション：評価、タグ、いいね、編集、削除（masterの場合） -->
           <div class="bottom-section">
             <div class="rating-display">
               評価: {{ project.rating | render_stars }}
             </div>
             <div class="tags">
-              タグ: {% if project.tags %}{{ project.tags | join(', ') }}{% else %}なし{% endif %}
+              タグ: 
+              {% if project.tags %}
+                {% for tag in project.tags %}
+                  <span class="tag-box">{{ tag }}</span>{% if not loop.last %}、{% endif %}
+                {% endfor %}
+              {% else %}
+                なし
+              {% endif %}
             </div>
             <div class="like-section">
-              いいね: {{ project.likes|default(0) }}
-              <a href="{{ url_for('like', project_id=project.id) }}">👍いいね</a>
+              いいね: <span id="like-count-{{ project.id }}">{{ project.likes|default(0) }}</span>
+              <button onclick="toggleLike({{ project.id }})" style="background:none; border:none; cursor:pointer;">
+                <span id="like-icon-{{ project.id }}">👍いいね</span>
+              </button>
             </div>
             <div class="edit-link">
               <a href="{{ url_for('edit', project_id=project.id) }}">編集する</a>
             </div>
+            {% if session.get("master") %}
+              <div class="delete-link">
+                <a href="{{ url_for('delete', project_id=project.id) }}" onclick="return confirm('本当に削除しますか？');">削除する</a>
+              </div>
+            {% endif %}
           </div>
         </div>
         <script>
@@ -259,5 +287,27 @@
       <p style="text-align:center;">入力されたデータはありません。</p>
     {% endif %}
   </div>
+  
+  <script>
+    function toggleLike(projectId) {
+      var liked = localStorage.getItem("liked_" + projectId);
+      var url = liked ? "/unlike/" + projectId : "/like/" + projectId;
+      fetch(url, { method: "POST" })
+      .then(response => response.json())
+      .then(data => {
+        document.getElementById("like-count-" + projectId).textContent = data.likes;
+        if (liked) {
+          localStorage.removeItem("liked_" + projectId);
+          document.getElementById("like-icon-" + projectId).style.color = "";
+        } else {
+          localStorage.setItem("liked_" + projectId, "true");
+          document.getElementById("like-icon-" + projectId).style.color = "red";
+        }
+      })
+      .catch(error => {
+        console.error("Error:", error);
+      });
+    }
+  </script>
 </body>
 </html>
