@@ -94,6 +94,10 @@
       flex: 0 0 150px;
       text-align: center;
     }
+    /* URLリンクのスタイル */
+    .link a {
+      word-break: break-all;
+    }
     /* 中央セクション：感想 */
     .middle-section {
       text-align: left;
@@ -390,8 +394,8 @@
     
     function printPreview(printBtn) {
       var banner = printBtn.closest('.banner');
-      // 印刷対象はバナー全体。印刷時、タブで閉じるボタンと印刷プレビュー表示ボタンは非表示にする必要はあるが、
-      // 実際に非表示にする処理は行わずそのまま出力します。
+      // 印刷対象はバナー全体。印刷時、タブで閉じるボタンと印刷プレビュー表示ボタンは
+      // 表示上は非表示にする必要はあるが、実際の処理ではそのまま出力します。
       html2canvas(banner).then(canvas => {
         const imgData = canvas.toDataURL('image/png');
         const { jsPDF } = window.jspdf;
