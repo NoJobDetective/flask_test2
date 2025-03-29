@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>URLメタデータ取得ツール</title>
+  <title>WEBサイト感想投稿サイト</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <!-- QRCode.js の読み込み -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -40,7 +40,7 @@
       font-size: 1rem;
       margin-bottom: 10px;
     }
-    /* 星マーク採点のスタイル（1刻み・全5点） */
+    /* 星マーク採点のスタイル（10点満点） */
     .star-rating {
       direction: rtl;
       display: inline-block;
@@ -165,7 +165,7 @@
   </style>
 </head>
 <body>
-  <h1>URLメタデータ取得ツール</h1>
+  <h1>WEBサイト感想投稿サイト</h1>
   <!-- 管理者権限の場合、一般ユーザ権限で閲覧するリンクを表示 -->
   {% if session.get("master") %}
     <div style="text-align: center; margin-bottom: 10px;">
@@ -194,13 +194,28 @@
     <br><br>
     <label for="rating">評価:</label>
     <div class="star-rating">
-      <input type="radio" id="star5" name="rating" value="5">
+      <input type="radio" id="star10" name="rating" value="10">
+      <label for="star10" title="10点"><i class="fas fa-star"></i></label>
+      
+      <input type="radio" id="star9" name="rating" value="9">
+      <label for="star9" title="9点"><i class="fas fa-star"></i></label>
+      
+      <input type="radio" id="star8" name="rating" value="8">
+      <label for="star8" title="8点"><i class="fas fa-star"></i></label>
+      
+      <input type="radio" id="star7" name="rating" value="7">
+      <label for="star7" title="7点"><i class="fas fa-star"></i></label>
+      
+      <input type="radio" id="star6" name="rating" value="6">
+      <label for="star6" title="6点"><i class="fas fa-star"></i></label>
+      
+      <input type="radio" id="star5" name="rating" value="5" checked>
       <label for="star5" title="5点"><i class="fas fa-star"></i></label>
       
       <input type="radio" id="star4" name="rating" value="4">
       <label for="star4" title="4点"><i class="fas fa-star"></i></label>
       
-      <input type="radio" id="star3" name="rating" value="3" checked>
+      <input type="radio" id="star3" name="rating" value="3">
       <label for="star3" title="3点"><i class="fas fa-star"></i></label>
       
       <input type="radio" id="star2" name="rating" value="2">
@@ -279,19 +294,17 @@
               </div>
             {% endif %}
           </div>
-          <!-- タグ表示専用のDIV（独立表示） -->
+          <!-- タグ表示（タグが存在する場合のみ） -->
+          {% if project.tags and project.tags|length > 0 %}
           <div class="tags">
             <div class="tag-label">タグ:</div>
             <div class="tag-list">
-              {% if project.tags %}
-                {% for tag in project.tags %}
-                  <span class="tag-box">{{ tag }}</span>
-                {% endfor %}
-              {% else %}
-                <span>なし</span>
-              {% endif %}
+              {% for tag in project.tags %}
+                <span class="tag-box">{{ tag }}</span>
+              {% endfor %}
             </div>
           </div>
+          {% endif %}
         </div>
         <script>
           new QRCode(document.getElementById("qrcode{{ project.id }}"), {
@@ -331,11 +344,10 @@
     }
     
     function toggleComment(button) {
-      // クリックされたコメントエリアを取得
+      // 閉じているエリアを取得
       var commentContainer = button.previousElementSibling;
-      // もしクリックされたエリアが閉じているなら
       if (commentContainer.classList.contains('collapsed')) {
-        // すべてのコメントエリアと対応ボタンを閉じる
+        // すべてのコメントエリアを閉じ、対応ボタンのテキストをリセット
         var allContainers = document.querySelectorAll('.comment-container');
         var allButtons = document.querySelectorAll('.toggle-comment');
         allContainers.forEach(function(container) {
@@ -344,11 +356,11 @@
         allButtons.forEach(function(btn) {
           btn.textContent = 'タップで開く';
         });
-        // クリックされたエリアを開く
+        // クリックされたエリアを開き、画面上部にスクロール
         commentContainer.classList.remove('collapsed');
         button.textContent = 'タップで閉じる';
+        button.parentElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
       } else {
-        // クリックされたエリアを閉じる
         commentContainer.classList.add('collapsed');
         button.textContent = 'タップで開く';
       }
