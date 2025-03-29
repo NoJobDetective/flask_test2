@@ -8,6 +8,9 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <!-- FontAwesome のCDN -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+  <!-- html2canvas と jsPDF の読み込み -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     /* 全体の基本スタイル */
     body {
@@ -104,7 +107,7 @@
       max-height: 60px;
       overflow: hidden;
     }
-    .toggle-comment {
+    .toggle-comment, .print-preview-btn {
       display: inline-block;
       margin-top: 5px;
       padding: 4px 8px;
@@ -114,7 +117,7 @@
       border-radius: 4px;
       cursor: pointer;
     }
-    .toggle-comment:hover {
+    .toggle-comment:hover, .print-preview-btn:hover {
       background-color: #0056b3;
     }
     /* 下部セクション */
@@ -233,7 +236,7 @@
     <h2>過去の入力データ</h2>
     {% if projects %}
       {% for project in projects %}
-        <div class="banner">
+        <div class="banner" id="banner{{ project.id }}">
           <!-- 上部セクション：サムネイル、タイトル、URL、QRコード -->
           <div class="top-section">
             <div class="top-left">
@@ -344,26 +347,70 @@
     }
     
     function toggleComment(button) {
-      // 閉じているエリアを取得
       var commentContainer = button.previousElementSibling;
+      var banner = button.closest('.banner');
       if (commentContainer.classList.contains('collapsed')) {
-        // すべてのコメントエリアを閉じ、対応ボタンのテキストをリセット
+        // 閉じている他のエリアとボタンを全てリセット
         var allContainers = document.querySelectorAll('.comment-container');
-        var allButtons = document.querySelectorAll('.toggle-comment');
+        var allToggleButtons = document.querySelectorAll('.toggle-comment');
+        var allPrintButtons = document.querySelectorAll('.print-preview-btn');
         allContainers.forEach(function(container) {
           container.classList.add('collapsed');
         });
-        allButtons.forEach(function(btn) {
+        allToggleButtons.forEach(function(btn) {
           btn.textContent = 'タップで開く';
         });
-        // クリックされたエリアを開き、画面上部にスクロール
+        allPrintButtons.forEach(function(btn) {
+          btn.remove();
+        });
+        // 開く処理：エリアを展開し、ボタンのテキストを変更
         commentContainer.classList.remove('collapsed');
         button.textContent = 'タップで閉じる';
-        button.parentElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // バナー全体の先頭が見えるようスクロール
+        banner.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // 印刷プレビュー表示ボタンを追加（toggleボタンの右側）
+        if (!button.nextElementSibling || !button.nextElementSibling.classList.contains('print-preview-btn')) {
+          var printBtn = document.createElement('button');
+          printBtn.type = "button";
+          printBtn.className = "print-preview-btn";
+          printBtn.textContent = "印刷プレビューを表示";
+          printBtn.style.marginLeft = "10px";
+          printBtn.onclick = function() { printPreview(this); };
+          button.parentNode.insertBefore(printBtn, button.nextSibling);
+        }
       } else {
         commentContainer.classList.add('collapsed');
         button.textContent = 'タップで開く';
+        var nextSibling = button.nextElementSibling;
+        if (nextSibling && nextSibling.classList.contains('print-preview-btn')) {
+          nextSibling.remove();
+        }
       }
+    }
+    
+    function printPreview(printBtn) {
+      var banner = printBtn.closest('.banner');
+      // 非表示にするボタン
+      var toggleBtn = banner.querySelector('.toggle-comment');
+      if (toggleBtn) {
+        toggleBtn.style.display = 'none';
+      }
+      printBtn.style.display = 'none';
+      // キャプチャ対象はバナー全体
+      html2canvas(banner).then(canvas => {
+        const imgData = canvas.toDataURL('image/png');
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const pageWidth = 210; // A4サイズの横幅(mm)
+        const imgHeight = canvas.height * pageWidth / canvas.width;
+        pdf.addImage(imgData, 'PNG', 0, 0, pageWidth, imgHeight);
+        const blob = pdf.output("blob");
+        const blobUrl = URL.createObjectURL(blob);
+        const printWindow = window.open(blobUrl);
+        printWindow.addEventListener('load', function() {
+          printWindow.print();
+        });
+      });
     }
   </script>
 </body>
