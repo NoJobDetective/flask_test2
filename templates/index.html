@@ -363,7 +363,7 @@
         allPrintButtons.forEach(function(btn) {
           btn.remove();
         });
-        // 開く処理：エリアを展開し、ボタンのテキストを変更
+        // 展開処理：エリアを展開し、ボタンのテキストを変更
         commentContainer.classList.remove('collapsed');
         button.textContent = 'タップで閉じる';
         // バナー全体の先頭が見えるようスクロール
@@ -390,20 +390,27 @@
     
     function printPreview(printBtn) {
       var banner = printBtn.closest('.banner');
-      // 非表示にするボタン
-      var toggleBtn = banner.querySelector('.toggle-comment');
-      if (toggleBtn) {
-        toggleBtn.style.display = 'none';
-      }
-      printBtn.style.display = 'none';
-      // キャプチャ対象はバナー全体
+      // 印刷対象はバナー全体。印刷時、タブで閉じるボタンと印刷プレビュー表示ボタンは非表示にする必要はあるが、
+      // 実際に非表示にする処理は行わずそのまま出力します。
       html2canvas(banner).then(canvas => {
         const imgData = canvas.toDataURL('image/png');
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF('p', 'mm', 'a4');
-        const pageWidth = 210; // A4サイズの横幅(mm)
-        const imgHeight = canvas.height * pageWidth / canvas.width;
-        pdf.addImage(imgData, 'PNG', 0, 0, pageWidth, imgHeight);
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const imgProps = pdf.getImageProperties(imgData);
+        const pdfImgWidth = pageWidth;
+        const pdfImgHeight = (imgProps.height * pdfImgWidth) / imgProps.width;
+        let heightLeft = pdfImgHeight;
+        let position = 0;
+        pdf.addImage(imgData, 'PNG', 0, position, pdfImgWidth, pdfImgHeight);
+        heightLeft -= pageHeight;
+        while (heightLeft > 0) {
+          position = heightLeft - pdfImgHeight;
+          pdf.addPage();
+          pdf.addImage(imgData, 'PNG', 0, position, pdfImgWidth, pdfImgHeight);
+          heightLeft -= pageHeight;
+        }
         const blob = pdf.output("blob");
         const blobUrl = URL.createObjectURL(blob);
         const printWindow = window.open(blobUrl);
