@@ -11,6 +11,8 @@
   <!-- html2canvas と jsPDF の読み込み -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- marked.js の読み込み（Markdown変換用） -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
     /* 全体の基本スタイル */
     body {
@@ -103,7 +105,7 @@
       text-align: left;
       margin-bottom: 10px;
     }
-    /* コメントエリア（開閉対象） */
+    /* Markdownとして表示するコメントエリア */
     .comment-container {
       transition: max-height 0.3s ease;
     }
@@ -260,22 +262,13 @@
               <div id="qrcode{{ project.id }}"></div>
             </div>
           </div>
-          <!-- 中央セクション：感想 -->
+          <!-- 中央セクション：感想（Markdownレンダリング対応） -->
+          {% set lines = project.comment.split('\n') %}
+          {% set is_collapsed = lines|length > 4 %}
           <div class="middle-section">
-            {% set lines = project.comment.split('\n') %}
-            {% if lines|length > 4 %}
-              <div class="comment-container collapsed">
-                {% for line in lines %}
-                  {{ line }}<br>
-                {% endfor %}
-              </div>
+            <div class="comment-container markdown-content {% if is_collapsed %}collapsed{% endif %}" data-raw="{{ project.comment | e }}"></div>
+            {% if is_collapsed %}
               <button type="button" class="toggle-comment" onclick="toggleComment(this)">タップで開く</button>
-            {% else %}
-              <div class="comment-container">
-                {% for line in lines %}
-                  {{ line }}<br>
-                {% endfor %}
-              </div>
             {% endif %}
           </div>
           <!-- 下部セクション：登録日、評価、いいね、編集、削除 -->
@@ -329,7 +322,15 @@
     {% endif %}
   </div>
   
+  <!-- Markdown変換処理 -->
   <script>
+    document.addEventListener("DOMContentLoaded", function(){
+      document.querySelectorAll('.markdown-content').forEach(function(el){
+        var raw = el.getAttribute('data-raw');
+        el.innerHTML = marked.parse(raw);
+      });
+    });
+
     function toggleLike(projectId) {
       var liked = localStorage.getItem("liked_" + projectId);
       var url = liked ? "/unlike/" + projectId : "/like/" + projectId;
@@ -394,8 +395,6 @@
     
     function printPreview(printBtn) {
       var banner = printBtn.closest('.banner');
-      // 印刷対象はバナー全体。印刷時は「タップで閉じる」ボタンと「印刷プレビューを表示」ボタンを表示上は非表示にする必要はあるが、
-      // 実際の処理ではそのまま出力します。
       html2canvas(banner).then(canvas => {
         const imgData = canvas.toDataURL('image/png');
         const { jsPDF } = window.jspdf;
