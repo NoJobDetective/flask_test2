@@ -5,6 +5,7 @@ import json
 import os
 import base64
 import re  # 改行コード統一用
+import markdown  # 追加：マークダウン変換用
 from datetime import datetime, timezone, timedelta  # 登録日の自動入力用
 from urllib.parse import urlparse  # URL解析用
 
@@ -116,6 +117,11 @@ def render_stars(rating):
 
 app.jinja_env.filters['render_stars'] = render_stars
 
+# 追加：マークダウンフィルターの登録
+def markdown_filter(text):
+    return markdown.markdown(text)
+app.jinja_env.filters['markdown'] = markdown_filter
+
 @app.route("/", methods=["GET", "POST"])
 def index():
     if request.method == "POST" and "url" in request.form:
@@ -150,7 +156,7 @@ def index():
             }
             projects.append(project)
             save_all_projects(projects)
-            # POST後はリダイレクトして重複投稿を防止
+            # POST完了後はリダイレクトして重複登録を防止
             return redirect(url_for("index"))
         else:
             sorted_projects = sorted(load_projects(), key=lambda p: float(p.get('rating', 0)), reverse=True)
