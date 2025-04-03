@@ -406,58 +406,49 @@
     // 印刷プレビュー（通常版）：感想部分が40行ごとにページ変更
     function printPreview(printBtn) {
       var banner = printBtn.closest('.banner');
-      // 取得前に、バナー内の各セクションの高さを取得
-      var topSection = banner.querySelector('.top-section');
-      var commentContainer = banner.querySelector('.comment-container');
-      var bannerHeight = banner.offsetHeight;
-      var pages = [];
-      if (commentContainer) {
-          var topHeight = topSection ? topSection.offsetHeight : 0;
-          var commentTotalHeight = commentContainer.offsetHeight;
-          var bottomHeight = bannerHeight - (topHeight + commentTotalHeight);
-          var lineHeight = 24; // 1行あたり24pxと仮定
-          var pageBreakHeight = 40 * lineHeight; // 40行分の高さ
-          // 1ページ目：上部+最初の40行分（またはコメント全体が短い場合はコメント全体）
-          var firstPageEnd = topHeight + Math.min(pageBreakHeight, commentTotalHeight);
-          pages.push({ start: 0, end: firstPageEnd });
-          var currentY = firstPageEnd;
-          while (currentY < topHeight + commentTotalHeight) {
-              var nextPageEnd = currentY + pageBreakHeight;
-              if (nextPageEnd > topHeight + commentTotalHeight) nextPageEnd = topHeight + commentTotalHeight;
-              pages.push({ start: currentY, end: nextPageEnd });
-              currentY = nextPageEnd;
-          }
-          // 最終ページ：下部セクションを含める
-          pages[pages.length - 1].end = bannerHeight;
-      } else {
-          pages = [{ start: 0, end: bannerHeight }];
-      }
+      // 一時的にborderを非表示にする
+      banner.style.setProperty("border", "none", "important");
       html2canvas(banner).then(canvas => {
+        // 後で元に戻す
+        banner.style.removeProperty("border");
+        const imgData = canvas.toDataURL('image/png');
         const { jsPDF } = window.jspdf;
         const pdfDoc = new jsPDF('p', 'mm', 'a4');
         const pageWidth = pdfDoc.internal.pageSize.getWidth();
-        // スケール係数：canvas.height / bannerHeight
-        var scaleFactor = canvas.height / bannerHeight;
-        pages.forEach((page, index) => {
-          var startY = page.start * scaleFactor;
-          var pageCanvas = document.createElement('canvas');
-          pageCanvas.width = canvas.width;
-          pageCanvas.height = (page.end - page.start) * scaleFactor;
-          var ctx = pageCanvas.getContext('2d');
-          ctx.drawImage(canvas, 0, startY, canvas.width, pageCanvas.height, 0, 0, canvas.width, pageCanvas.height);
-          const pageImgData = pageCanvas.toDataURL('image/png');
-          var imgWidth = pageWidth;
-          var imgHeight = (pageCanvas.height * imgWidth) / pageCanvas.width;
-          pdfDoc.addImage(pageImgData, 'PNG', 0, 0, imgWidth, imgHeight);
-          if (index < pages.length - 1) {
-             pdfDoc.addPage();
-          }
-        });
-        const blob = pdfDoc.output("blob");
-        const blobUrl = URL.createObjectURL(blob);
-        const printWindow = window.open(blobUrl);
-        printWindow.addEventListener('load', function() {
-          printWindow.print();
+        // 感想部分を40行ごとにページ変更する処理（バナー全体の高さを基準）
+        var bannerHeight = banner.offsetHeight;
+        var lineHeight = 24; // 1行あたり24pxと仮定
+        var pageBreakHeight = 40 * lineHeight;
+        var pages = [];
+        pages.push({ start: 0, end: Math.min(pageBreakHeight, bannerHeight) });
+        var currentY = pageBreakHeight;
+        while (currentY < bannerHeight) {
+          pages.push({ start: currentY, end: Math.min(currentY + pageBreakHeight, bannerHeight) });
+          currentY += pageBreakHeight;
+        }
+        html2canvas(banner).then(fullCanvas => {
+          const scaleFactor = fullCanvas.height / bannerHeight;
+          pages.forEach((page, index) => {
+            var startY = page.start * scaleFactor;
+            var pageCanvas = document.createElement('canvas');
+            pageCanvas.width = fullCanvas.width;
+            pageCanvas.height = (page.end - page.start) * scaleFactor;
+            var ctx = pageCanvas.getContext('2d');
+            ctx.drawImage(fullCanvas, 0, startY, fullCanvas.width, pageCanvas.height, 0, 0, fullCanvas.width, pageCanvas.height);
+            const pageImgData = pageCanvas.toDataURL('image/png');
+            var imgWidth = pageWidth;
+            var imgHeight = (pageCanvas.height * imgWidth) / pageCanvas.width;
+            pdfDoc.addImage(pageImgData, 'PNG', 0, 0, imgWidth, imgHeight);
+            if (index < pages.length - 1) {
+              pdfDoc.addPage();
+            }
+          });
+          const blob = pdfDoc.output("blob");
+          const blobUrl = URL.createObjectURL(blob);
+          const printWindow = window.open(blobUrl);
+          printWindow.addEventListener('load', function() {
+            printWindow.print();
+          });
         });
       });
     }
@@ -465,7 +456,10 @@
     // 縮小印刷プレビュー（余白10mmを設定してスケーリング調整）
     function printPreviewScaled(printBtn) {
       var banner = printBtn.closest('.banner');
+      // 一時的にborderを非表示にする
+      banner.style.setProperty("border", "none", "important");
       html2canvas(banner, { scale: 2 }).then(canvas => {
+        banner.style.removeProperty("border");
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF('p', 'mm', 'a4');
         const margin = 10; // 10mmの余白
