@@ -381,7 +381,7 @@
           printBtn.style.marginLeft = "10px";
           printBtn.onclick = function() { printPreview(this); };
           button.parentNode.insertBefore(printBtn, button.nextSibling);
-          // 縮小印刷プレビュー表示ボタンを追加（印刷プレビューボタンの右側）
+          // 追加：縮小印刷プレビュー表示ボタンを印刷プレビューボタンの右に追加
           var printScaledBtn = document.createElement('button');
           printScaledBtn.type = "button";
           printScaledBtn.className = "print-preview-scaled-btn";
@@ -403,31 +403,57 @@
       }
     }
     
+    // 印刷プレビュー（通常版）：感想部分が40行ごとにページ変更
     function printPreview(printBtn) {
       var banner = printBtn.closest('.banner');
+      // 取得前に、バナー内の各セクションの高さを取得
+      var topSection = banner.querySelector('.top-section');
+      var commentContainer = banner.querySelector('.comment-container');
+      var bannerHeight = banner.offsetHeight;
+      var pages = [];
+      if (commentContainer) {
+          var topHeight = topSection ? topSection.offsetHeight : 0;
+          var commentTotalHeight = commentContainer.offsetHeight;
+          var bottomHeight = bannerHeight - (topHeight + commentTotalHeight);
+          var lineHeight = 24; // 1行あたり24pxと仮定
+          var pageBreakHeight = 40 * lineHeight; // 40行分の高さ
+          // 1ページ目：上部+最初の40行分（またはコメント全体が短い場合はコメント全体）
+          var firstPageEnd = topHeight + Math.min(pageBreakHeight, commentTotalHeight);
+          pages.push({ start: 0, end: firstPageEnd });
+          var currentY = firstPageEnd;
+          while (currentY < topHeight + commentTotalHeight) {
+              var nextPageEnd = currentY + pageBreakHeight;
+              if (nextPageEnd > topHeight + commentTotalHeight) nextPageEnd = topHeight + commentTotalHeight;
+              pages.push({ start: currentY, end: nextPageEnd });
+              currentY = nextPageEnd;
+          }
+          // 最終ページ：下部セクションを含める
+          pages[pages.length - 1].end = bannerHeight;
+      } else {
+          pages = [{ start: 0, end: bannerHeight }];
+      }
       html2canvas(banner).then(canvas => {
-        // 感想の行数を取得し、40行ごとにページ分割する
-        var commentElem = banner.querySelector('.comment-container');
-        var numLines = commentElem.innerText.split('\n').length;
-        var pageCount = numLines > 40 ? Math.ceil(numLines / 40) : 1;
-        
-        const imgData = canvas.toDataURL('image/png');
         const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF('p', 'mm', 'a4');
-        const pageWidth = pdf.internal.pageSize.getWidth();
-        const imgProps = pdf.getImageProperties(imgData);
-        const pdfImgWidth = pageWidth;
-        const pdfImgHeight = (imgProps.height * pdfImgWidth) / imgProps.width;
-        // 分割するページの高さ＝全体の画像高さをページ数で均等に分割
-        const pageHeight = pdfImgHeight / pageCount;
-        
-        pdf.addImage(imgData, 'PNG', 0, 0, pdfImgWidth, pdfImgHeight);
-        for (let i = 1; i < pageCount; i++) {
-          pdf.addPage();
-          let offset = -i * pageHeight;
-          pdf.addImage(imgData, 'PNG', 0, offset, pdfImgWidth, pdfImgHeight);
-        }
-        const blob = pdf.output("blob");
+        const pdfDoc = new jsPDF('p', 'mm', 'a4');
+        const pageWidth = pdfDoc.internal.pageSize.getWidth();
+        // スケール係数：canvas.height / bannerHeight
+        var scaleFactor = canvas.height / bannerHeight;
+        pages.forEach((page, index) => {
+          var startY = page.start * scaleFactor;
+          var pageCanvas = document.createElement('canvas');
+          pageCanvas.width = canvas.width;
+          pageCanvas.height = (page.end - page.start) * scaleFactor;
+          var ctx = pageCanvas.getContext('2d');
+          ctx.drawImage(canvas, 0, startY, canvas.width, pageCanvas.height, 0, 0, canvas.width, pageCanvas.height);
+          const pageImgData = pageCanvas.toDataURL('image/png');
+          var imgWidth = pageWidth;
+          var imgHeight = (pageCanvas.height * imgWidth) / pageCanvas.width;
+          pdfDoc.addImage(pageImgData, 'PNG', 0, 0, imgWidth, imgHeight);
+          if (index < pages.length - 1) {
+             pdfDoc.addPage();
+          }
+        });
+        const blob = pdfDoc.output("blob");
         const blobUrl = URL.createObjectURL(blob);
         const printWindow = window.open(blobUrl);
         printWindow.addEventListener('load', function() {
@@ -436,28 +462,33 @@
       });
     }
     
+    // 縮小印刷プレビュー（余白10mmを設定してスケーリング調整）
     function printPreviewScaled(printBtn) {
       var banner = printBtn.closest('.banner');
       html2canvas(banner, { scale: 2 }).then(canvas => {
-        var commentElem = banner.querySelector('.comment-container');
-        var numLines = commentElem.innerText.split('\n').length;
-        var pageCount = numLines > 40 ? Math.ceil(numLines / 40) : 1;
-        
-        const imgData = canvas.toDataURL('image/png');
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF('p', 'mm', 'a4');
         const margin = 10; // 10mmの余白
         const pageWidth = pdf.internal.pageSize.getWidth();
-        const imgProps = pdf.getImageProperties(imgData);
-        const pdfImgWidth = pageWidth - margin * 2;
-        const pdfImgHeight = (imgProps.height * pdfImgWidth) / imgProps.width;
-        const pageHeight = pdfImgHeight / pageCount;
-        
-        pdf.addImage(imgData, 'PNG', margin, margin, pdfImgWidth, pdfImgHeight);
-        for (let i = 1; i < pageCount; i++) {
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const availableWidth = pageWidth - margin * 2;
+        const availableHeight = pageHeight - margin * 2;
+        const imgProps = pdf.getImageProperties(canvas.toDataURL('image/png'));
+        let pdfImgWidth = availableWidth;
+        let pdfImgHeight = (imgProps.height * pdfImgWidth) / imgProps.width;
+        if (pdfImgHeight > availableHeight) {
+          pdfImgHeight = availableHeight;
+          pdfImgWidth = (imgProps.width * pdfImgHeight) / imgProps.height;
+        }
+        let heightLeft = pdfImgHeight;
+        let position = margin;
+        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', margin, position, pdfImgWidth, pdfImgHeight);
+        heightLeft -= availableHeight;
+        while (heightLeft > 0) {
+          position = margin - heightLeft;
           pdf.addPage();
-          let offset = -i * pageHeight + margin;
-          pdf.addImage(imgData, 'PNG', margin, offset, pdfImgWidth, pdfImgHeight);
+          pdf.addImage(canvas.toDataURL('image/png'), 'PNG', margin, position, pdfImgWidth, pdfImgHeight);
+          heightLeft -= availableHeight;
         }
         const blob = pdf.output("blob");
         const blobUrl = URL.createObjectURL(blob);
