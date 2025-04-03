@@ -72,9 +72,8 @@
       margin-left: auto;
       margin-right: auto;
     }
-    /* 内側の印刷対象DIV */
+    /* 内側の印刷対象DIV：borderを含まない */
     .printable-content {
-      /* 印刷時にborderを出さないようにするためのスタイル（必要に応じて） */
       border: none;
     }
     /* 上部セクション：各要素間に余白を追加 */
@@ -246,7 +245,7 @@
     {% if projects %}
       {% for project in projects %}
         <div class="banner" id="banner{{ project.id }}">
-          <!-- 新たに内側のDIVを作成し、印刷対象とする -->
+          <!-- 新たに内側のDIV（printable-content）を作成 -->
           <div class="printable-content">
             <!-- 上部セクション：サムネイル、タイトル、URL、QRコード -->
             <div class="top-section">
@@ -267,21 +266,17 @@
                 <div id="qrcode{{ project.id }}"></div>
               </div>
             </div>
-            <!-- 中央セクション：感想 -->
+            <!-- 中央セクション：感想（マークダウン変換） -->
             <div class="middle-section">
               {% set lines = project.comment.split('\n') %}
               {% if lines|length > 4 %}
                 <div class="comment-container collapsed">
-                  {% for line in lines %}
-                    {{ line }}<br>
-                  {% endfor %}
+                  {{ project.comment | markdown | safe }}
                 </div>
                 <button type="button" class="toggle-comment" onclick="toggleComment(this)">タップで開く</button>
               {% else %}
                 <div class="comment-container">
-                  {% for line in lines %}
-                    {{ line }}<br>
-                  {% endfor %}
+                  {{ project.comment | markdown | safe }}
                 </div>
               {% endif %}
             </div>
@@ -411,30 +406,43 @@
       }
     }
     
-    // 印刷プレビュー（通常版）：印刷対象はprintable-content内のDIV（borderなし）
+    // 印刷プレビュー（通常版）：印刷対象はprintable-content内のDIV（borderなし）、
+    // 感想部分が40行ごとにページ分割されるように改ページを行います。
     function printPreview(printBtn) {
       var banner = printBtn.closest('.banner');
       var printable = banner.querySelector('.printable-content');
+      // 以下、バナー全体の高さに対して40行分ごとに改ページする処理
+      var bannerHeight = banner.offsetHeight;
+      // ここでは、1行あたり24px、40行＝960pxを1ページ分と仮定
+      var pageBreakHeight = 960;
       html2canvas(printable).then(canvas => {
         const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF('p', 'mm', 'a4');
-        const pageWidth = pdf.internal.pageSize.getWidth();
-        const pageHeight = pdf.internal.pageSize.getHeight();
-        const imgData = canvas.toDataURL('image/png');
-        const imgProps = pdf.getImageProperties(imgData);
-        const pdfImgWidth = pageWidth;
-        const pdfImgHeight = (imgProps.height * pdfImgWidth) / imgProps.width;
-        let heightLeft = pdfImgHeight;
-        let position = 0;
-        pdf.addImage(imgData, 'PNG', 0, position, pdfImgWidth, pdfImgHeight);
-        heightLeft -= pageHeight;
-        while (heightLeft > 0) {
-          position = heightLeft - pdfImgHeight;
-          pdf.addPage();
-          pdf.addImage(imgData, 'PNG', 0, position, pdfImgWidth, pdfImgHeight);
-          heightLeft -= pageHeight;
+        const pdfDoc = new jsPDF('p', 'mm', 'a4');
+        const pageWidth = pdfDoc.internal.pageSize.getWidth();
+        var scaleFactor = canvas.height / bannerHeight;
+        // 分割処理
+        var pages = [];
+        var currentY = 0;
+        while (currentY < bannerHeight) {
+          pages.push({ start: currentY, end: Math.min(currentY + pageBreakHeight, bannerHeight) });
+          currentY += pageBreakHeight;
         }
-        const blob = pdf.output("blob");
+        pages.forEach((page, index) => {
+          var startY = page.start * scaleFactor;
+          var pageCanvas = document.createElement('canvas');
+          pageCanvas.width = canvas.width;
+          pageCanvas.height = (page.end - page.start) * scaleFactor;
+          var ctx = pageCanvas.getContext('2d');
+          ctx.drawImage(canvas, 0, startY, canvas.width, pageCanvas.height, 0, 0, canvas.width, pageCanvas.height);
+          const pageImgData = pageCanvas.toDataURL('image/png');
+          var imgWidth = pageWidth;
+          var imgHeight = (pageCanvas.height * imgWidth) / pageCanvas.width;
+          pdfDoc.addImage(pageImgData, 'PNG', 0, 0, imgWidth, imgHeight);
+          if (index < pages.length - 1) {
+             pdfDoc.addPage();
+          }
+        });
+        const blob = pdfDoc.output("blob");
         const blobUrl = URL.createObjectURL(blob);
         const printWindow = window.open(blobUrl);
         printWindow.addEventListener('load', function() {
