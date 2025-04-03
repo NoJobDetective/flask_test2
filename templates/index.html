@@ -354,7 +354,7 @@
       var commentContainer = button.previousElementSibling;
       var banner = button.closest('.banner');
       if (commentContainer.classList.contains('collapsed')) {
-        // 閉じている他のエリアとボタンをリセット
+        // 他の開いているエリアとボタンをリセット
         var allContainers = document.querySelectorAll('.comment-container');
         var allToggleButtons = document.querySelectorAll('.toggle-comment');
         var allPrintButtons = document.querySelectorAll('.print-preview-btn, .print-preview-scaled-btn');
@@ -381,7 +381,7 @@
           printBtn.style.marginLeft = "10px";
           printBtn.onclick = function() { printPreview(this); };
           button.parentNode.insertBefore(printBtn, button.nextSibling);
-          // 追加：縮小印刷プレビュー表示ボタンを印刷プレビューボタンの右に追加
+          // 縮小印刷プレビュー表示ボタンを追加（印刷プレビューボタンの右側）
           var printScaledBtn = document.createElement('button');
           printScaledBtn.type = "button";
           printScaledBtn.className = "print-preview-scaled-btn";
@@ -406,23 +406,26 @@
     function printPreview(printBtn) {
       var banner = printBtn.closest('.banner');
       html2canvas(banner).then(canvas => {
+        // 感想の行数を取得し、40行ごとにページ分割する
+        var commentElem = banner.querySelector('.comment-container');
+        var numLines = commentElem.innerText.split('\n').length;
+        var pageCount = numLines > 40 ? Math.ceil(numLines / 40) : 1;
+        
         const imgData = canvas.toDataURL('image/png');
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF('p', 'mm', 'a4');
         const pageWidth = pdf.internal.pageSize.getWidth();
-        const pageHeight = pdf.internal.pageSize.getHeight();
         const imgProps = pdf.getImageProperties(imgData);
         const pdfImgWidth = pageWidth;
         const pdfImgHeight = (imgProps.height * pdfImgWidth) / imgProps.width;
-        let heightLeft = pdfImgHeight;
-        let position = 0;
-        pdf.addImage(imgData, 'PNG', 0, position, pdfImgWidth, pdfImgHeight);
-        heightLeft -= pageHeight;
-        while (heightLeft > 0) {
-          position = heightLeft - pdfImgHeight;
+        // 分割するページの高さ＝全体の画像高さをページ数で均等に分割
+        const pageHeight = pdfImgHeight / pageCount;
+        
+        pdf.addImage(imgData, 'PNG', 0, 0, pdfImgWidth, pdfImgHeight);
+        for (let i = 1; i < pageCount; i++) {
           pdf.addPage();
-          pdf.addImage(imgData, 'PNG', 0, position, pdfImgWidth, pdfImgHeight);
-          heightLeft -= pageHeight;
+          let offset = -i * pageHeight;
+          pdf.addImage(imgData, 'PNG', 0, offset, pdfImgWidth, pdfImgHeight);
         }
         const blob = pdf.output("blob");
         const blobUrl = URL.createObjectURL(blob);
@@ -435,33 +438,26 @@
     
     function printPreviewScaled(printBtn) {
       var banner = printBtn.closest('.banner');
-      // 印刷対象はバナー全体。印刷時は「タップで閉じる」ボタンと「印刷プレビューを表示」ボタンが見切れないよう、
-      // A4サイズの余白（10mm）を設定してスケーリング調整します。
       html2canvas(banner, { scale: 2 }).then(canvas => {
+        var commentElem = banner.querySelector('.comment-container');
+        var numLines = commentElem.innerText.split('\n').length;
+        var pageCount = numLines > 40 ? Math.ceil(numLines / 40) : 1;
+        
         const imgData = canvas.toDataURL('image/png');
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF('p', 'mm', 'a4');
         const margin = 10; // 10mmの余白
         const pageWidth = pdf.internal.pageSize.getWidth();
-        const pageHeight = pdf.internal.pageSize.getHeight();
-        const availableWidth = pageWidth - margin * 2;
-        const availableHeight = pageHeight - margin * 2;
         const imgProps = pdf.getImageProperties(imgData);
-        let pdfImgWidth = availableWidth;
-        let pdfImgHeight = (imgProps.height * pdfImgWidth) / imgProps.width;
-        if (pdfImgHeight > availableHeight) {
-          pdfImgHeight = availableHeight;
-          pdfImgWidth = (imgProps.width * pdfImgHeight) / imgProps.height;
-        }
-        let heightLeft = pdfImgHeight;
-        let position = margin;
-        pdf.addImage(imgData, 'PNG', margin, position, pdfImgWidth, pdfImgHeight);
-        heightLeft -= availableHeight;
-        while (heightLeft > 0) {
-          position = margin - heightLeft;
+        const pdfImgWidth = pageWidth - margin * 2;
+        const pdfImgHeight = (imgProps.height * pdfImgWidth) / imgProps.width;
+        const pageHeight = pdfImgHeight / pageCount;
+        
+        pdf.addImage(imgData, 'PNG', margin, margin, pdfImgWidth, pdfImgHeight);
+        for (let i = 1; i < pageCount; i++) {
           pdf.addPage();
-          pdf.addImage(imgData, 'PNG', margin, position, pdfImgWidth, pdfImgHeight);
-          heightLeft -= availableHeight;
+          let offset = -i * pageHeight + margin;
+          pdf.addImage(imgData, 'PNG', margin, offset, pdfImgWidth, pdfImgHeight);
         }
         const blob = pdf.output("blob");
         const blobUrl = URL.createObjectURL(blob);
