@@ -72,7 +72,7 @@
       margin-left: auto;
       margin-right: auto;
     }
-    /* 上部セクション：flexレイアウトにgapを追加 */
+    /* 上部セクション：各要素間に余白を追加 */
     .top-section {
       display: flex;
       justify-content: space-between;
@@ -111,7 +111,7 @@
       max-height: 60px;
       overflow: hidden;
     }
-    .toggle-comment, .print-preview-btn {
+    .toggle-comment, .print-preview-btn, .print-preview-scaled-btn {
       display: inline-block;
       margin-top: 5px;
       padding: 4px 8px;
@@ -121,7 +121,7 @@
       border-radius: 4px;
       cursor: pointer;
     }
-    .toggle-comment:hover, .print-preview-btn:hover {
+    .toggle-comment:hover, .print-preview-btn:hover, .print-preview-scaled-btn:hover {
       background-color: #0056b3;
     }
     /* 下部セクション */
@@ -354,10 +354,10 @@
       var commentContainer = button.previousElementSibling;
       var banner = button.closest('.banner');
       if (commentContainer.classList.contains('collapsed')) {
-        // 他の開いているエリアとボタンを全てリセット
+        // 閉じている他のエリアとボタンをリセット
         var allContainers = document.querySelectorAll('.comment-container');
         var allToggleButtons = document.querySelectorAll('.toggle-comment');
-        var allPrintButtons = document.querySelectorAll('.print-preview-btn');
+        var allPrintButtons = document.querySelectorAll('.print-preview-btn, .print-preview-scaled-btn');
         allContainers.forEach(function(container) {
           container.classList.add('collapsed');
         });
@@ -381,18 +381,59 @@
           printBtn.style.marginLeft = "10px";
           printBtn.onclick = function() { printPreview(this); };
           button.parentNode.insertBefore(printBtn, button.nextSibling);
+          // 追加：縮小印刷プレビュー表示ボタンを印刷プレビューボタンの右に追加
+          var printScaledBtn = document.createElement('button');
+          printScaledBtn.type = "button";
+          printScaledBtn.className = "print-preview-scaled-btn";
+          printScaledBtn.textContent = "縮小印刷プレビューを表示";
+          printScaledBtn.style.marginLeft = "10px";
+          printScaledBtn.onclick = function() { printPreviewScaled(this); };
+          button.parentNode.insertBefore(printScaledBtn, printBtn.nextSibling);
         }
       } else {
         commentContainer.classList.add('collapsed');
         button.textContent = 'タップで開く';
         var nextSibling = button.nextElementSibling;
-        if (nextSibling && nextSibling.classList.contains('print-preview-btn')) {
+        if (nextSibling && (nextSibling.classList.contains('print-preview-btn') || nextSibling.classList.contains('print-preview-scaled-btn'))) {
           nextSibling.remove();
+          if (button.nextElementSibling && button.nextElementSibling.classList.contains('print-preview-scaled-btn')) {
+            button.nextElementSibling.remove();
+          }
         }
       }
     }
     
     function printPreview(printBtn) {
+      var banner = printBtn.closest('.banner');
+      html2canvas(banner).then(canvas => {
+        const imgData = canvas.toDataURL('image/png');
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const imgProps = pdf.getImageProperties(imgData);
+        const pdfImgWidth = pageWidth;
+        const pdfImgHeight = (imgProps.height * pdfImgWidth) / imgProps.width;
+        let heightLeft = pdfImgHeight;
+        let position = 0;
+        pdf.addImage(imgData, 'PNG', 0, position, pdfImgWidth, pdfImgHeight);
+        heightLeft -= pageHeight;
+        while (heightLeft > 0) {
+          position = heightLeft - pdfImgHeight;
+          pdf.addPage();
+          pdf.addImage(imgData, 'PNG', 0, position, pdfImgWidth, pdfImgHeight);
+          heightLeft -= pageHeight;
+        }
+        const blob = pdf.output("blob");
+        const blobUrl = URL.createObjectURL(blob);
+        const printWindow = window.open(blobUrl);
+        printWindow.addEventListener('load', function() {
+          printWindow.print();
+        });
+      });
+    }
+    
+    function printPreviewScaled(printBtn) {
       var banner = printBtn.closest('.banner');
       // 印刷対象はバナー全体。印刷時は「タップで閉じる」ボタンと「印刷プレビューを表示」ボタンが見切れないよう、
       // A4サイズの余白（10mm）を設定してスケーリング調整します。
@@ -406,7 +447,6 @@
         const availableWidth = pageWidth - margin * 2;
         const availableHeight = pageHeight - margin * 2;
         const imgProps = pdf.getImageProperties(imgData);
-        // 利用可能領域に合わせたサイズを計算
         let pdfImgWidth = availableWidth;
         let pdfImgHeight = (imgProps.height * pdfImgWidth) / imgProps.width;
         if (pdfImgHeight > availableHeight) {
@@ -418,8 +458,8 @@
         pdf.addImage(imgData, 'PNG', margin, position, pdfImgWidth, pdfImgHeight);
         heightLeft -= availableHeight;
         while (heightLeft > 0) {
-          pdf.addPage();
           position = margin - heightLeft;
+          pdf.addPage();
           pdf.addImage(imgData, 'PNG', margin, position, pdfImgWidth, pdfImgHeight);
           heightLeft -= availableHeight;
         }
