@@ -72,6 +72,11 @@
       margin-left: auto;
       margin-right: auto;
     }
+    /* 内側の印刷対象DIV */
+    .printable-content {
+      /* 印刷時にborderを出さないようにするためのスタイル（必要に応じて） */
+      border: none;
+    }
     /* 上部セクション：各要素間に余白を追加 */
     .top-section {
       display: flex;
@@ -241,77 +246,80 @@
     {% if projects %}
       {% for project in projects %}
         <div class="banner" id="banner{{ project.id }}">
-          <!-- 上部セクション：サムネイル、タイトル、URL、QRコード -->
-          <div class="top-section">
-            <div class="top-left">
-              {% if project.image %}
-                <img src="{{ project.image }}" alt="サムネイル">
+          <!-- 新たに内側のDIVを作成し、印刷対象とする -->
+          <div class="printable-content">
+            <!-- 上部セクション：サムネイル、タイトル、URL、QRコード -->
+            <div class="top-section">
+              <div class="top-left">
+                {% if project.image %}
+                  <img src="{{ project.image }}" alt="サムネイル">
+                {% else %}
+                  <div class="placeholder">サムネイル取得不可</div>
+                {% endif %}
+              </div>
+              <div class="top-middle">
+                <div class="title">{{ project.title }}</div>
+                <div class="link">
+                  <a href="{{ project.url }}" target="_blank">{{ project.url }}</a>
+                </div>
+              </div>
+              <div class="top-right">
+                <div id="qrcode{{ project.id }}"></div>
+              </div>
+            </div>
+            <!-- 中央セクション：感想 -->
+            <div class="middle-section">
+              {% set lines = project.comment.split('\n') %}
+              {% if lines|length > 4 %}
+                <div class="comment-container collapsed">
+                  {% for line in lines %}
+                    {{ line }}<br>
+                  {% endfor %}
+                </div>
+                <button type="button" class="toggle-comment" onclick="toggleComment(this)">タップで開く</button>
               {% else %}
-                <div class="placeholder">サムネイル取得不可</div>
+                <div class="comment-container">
+                  {% for line in lines %}
+                    {{ line }}<br>
+                  {% endfor %}
+                </div>
               {% endif %}
             </div>
-            <div class="top-middle">
-              <div class="title">{{ project.title }}</div>
-              <div class="link">
-                <a href="{{ project.url }}" target="_blank">{{ project.url }}</a>
+            <!-- 下部セクション：登録日、評価、いいね、編集、削除 -->
+            <div class="bottom-section">
+              <div class="reg-date">
+                登録日: {{ project['登録日'] }}
               </div>
+              <div class="rating-display">
+                評価: {{ project.rating | render_stars }}
+              </div>
+              <div class="like-section">
+                いいね: <span id="like-count-{{ project.id }}">{{ project.likes|default(0) }}</span>
+                <button onclick="toggleLike({{ project.id }})" style="background:none; border:none; cursor:pointer;">
+                  <span id="like-icon-{{ project.id }}">👍いいね</span>
+                </button>
+              </div>
+              <div class="edit-link">
+                <a href="{{ url_for('edit', project_id=project.id) }}">編集する</a>
+              </div>
+              {% if session.get("master") %}
+                <div class="delete-link">
+                  <a href="{{ url_for('delete', project_id=project.id) }}" onclick="return confirm('本当に削除しますか？');">削除する</a>
+                </div>
+              {% endif %}
             </div>
-            <div class="top-right">
-              <div id="qrcode{{ project.id }}"></div>
-            </div>
-          </div>
-          <!-- 中央セクション：感想 -->
-          <div class="middle-section">
-            {% set lines = project.comment.split('\n') %}
-            {% if lines|length > 4 %}
-              <div class="comment-container collapsed">
-                {% for line in lines %}
-                  {{ line }}<br>
+            <!-- タグ表示（タグが存在する場合のみ） -->
+            {% if project.tags and project.tags|length > 0 %}
+            <div class="tags">
+              <div class="tag-label">タグ:</div>
+              <div class="tag-list">
+                {% for tag in project.tags %}
+                  <span class="tag-box">{{ tag }}</span>
                 {% endfor %}
               </div>
-              <button type="button" class="toggle-comment" onclick="toggleComment(this)">タップで開く</button>
-            {% else %}
-              <div class="comment-container">
-                {% for line in lines %}
-                  {{ line }}<br>
-                {% endfor %}
-              </div>
+            </div>
             {% endif %}
-          </div>
-          <!-- 下部セクション：登録日、評価、いいね、編集、削除 -->
-          <div class="bottom-section">
-            <div class="reg-date">
-              登録日: {{ project['登録日'] }}
-            </div>
-            <div class="rating-display">
-              評価: {{ project.rating | render_stars }}
-            </div>
-            <div class="like-section">
-              いいね: <span id="like-count-{{ project.id }}">{{ project.likes|default(0) }}</span>
-              <button onclick="toggleLike({{ project.id }})" style="background:none; border:none; cursor:pointer;">
-                <span id="like-icon-{{ project.id }}">👍いいね</span>
-              </button>
-            </div>
-            <div class="edit-link">
-              <a href="{{ url_for('edit', project_id=project.id) }}">編集する</a>
-            </div>
-            {% if session.get("master") %}
-              <div class="delete-link">
-                <a href="{{ url_for('delete', project_id=project.id) }}" onclick="return confirm('本当に削除しますか？');">削除する</a>
-              </div>
-            {% endif %}
-          </div>
-          <!-- タグ表示（タグが存在する場合のみ） -->
-          {% if project.tags and project.tags|length > 0 %}
-          <div class="tags">
-            <div class="tag-label">タグ:</div>
-            <div class="tag-list">
-              {% for tag in project.tags %}
-                <span class="tag-box">{{ tag }}</span>
-              {% endfor %}
-            </div>
-          </div>
-          {% endif %}
+          </div><!-- /.printable-content -->
         </div>
         <script>
           new QRCode(document.getElementById("qrcode{{ project.id }}"), {
@@ -403,63 +411,43 @@
       }
     }
     
-    // 印刷プレビュー（通常版）：感想部分が40行ごとにページ変更
+    // 印刷プレビュー（通常版）：印刷対象はprintable-content内のDIV（borderなし）
     function printPreview(printBtn) {
       var banner = printBtn.closest('.banner');
-      // 一時的にborderを非表示にする
-      banner.style.setProperty("border", "none", "important");
-      html2canvas(banner).then(canvas => {
-        // 後で元に戻す
-        banner.style.removeProperty("border");
-        const imgData = canvas.toDataURL('image/png');
+      var printable = banner.querySelector('.printable-content');
+      html2canvas(printable).then(canvas => {
         const { jsPDF } = window.jspdf;
-        const pdfDoc = new jsPDF('p', 'mm', 'a4');
-        const pageWidth = pdfDoc.internal.pageSize.getWidth();
-        // 感想部分を40行ごとにページ変更する処理（バナー全体の高さを基準）
-        var bannerHeight = banner.offsetHeight;
-        var lineHeight = 24; // 1行あたり24pxと仮定
-        var pageBreakHeight = 40 * lineHeight;
-        var pages = [];
-        pages.push({ start: 0, end: Math.min(pageBreakHeight, bannerHeight) });
-        var currentY = pageBreakHeight;
-        while (currentY < bannerHeight) {
-          pages.push({ start: currentY, end: Math.min(currentY + pageBreakHeight, bannerHeight) });
-          currentY += pageBreakHeight;
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const imgData = canvas.toDataURL('image/png');
+        const imgProps = pdf.getImageProperties(imgData);
+        const pdfImgWidth = pageWidth;
+        const pdfImgHeight = (imgProps.height * pdfImgWidth) / imgProps.width;
+        let heightLeft = pdfImgHeight;
+        let position = 0;
+        pdf.addImage(imgData, 'PNG', 0, position, pdfImgWidth, pdfImgHeight);
+        heightLeft -= pageHeight;
+        while (heightLeft > 0) {
+          position = heightLeft - pdfImgHeight;
+          pdf.addPage();
+          pdf.addImage(imgData, 'PNG', 0, position, pdfImgWidth, pdfImgHeight);
+          heightLeft -= pageHeight;
         }
-        html2canvas(banner).then(fullCanvas => {
-          const scaleFactor = fullCanvas.height / bannerHeight;
-          pages.forEach((page, index) => {
-            var startY = page.start * scaleFactor;
-            var pageCanvas = document.createElement('canvas');
-            pageCanvas.width = fullCanvas.width;
-            pageCanvas.height = (page.end - page.start) * scaleFactor;
-            var ctx = pageCanvas.getContext('2d');
-            ctx.drawImage(fullCanvas, 0, startY, fullCanvas.width, pageCanvas.height, 0, 0, fullCanvas.width, pageCanvas.height);
-            const pageImgData = pageCanvas.toDataURL('image/png');
-            var imgWidth = pageWidth;
-            var imgHeight = (pageCanvas.height * imgWidth) / pageCanvas.width;
-            pdfDoc.addImage(pageImgData, 'PNG', 0, 0, imgWidth, imgHeight);
-            if (index < pages.length - 1) {
-              pdfDoc.addPage();
-            }
-          });
-          const blob = pdfDoc.output("blob");
-          const blobUrl = URL.createObjectURL(blob);
-          const printWindow = window.open(blobUrl);
-          printWindow.addEventListener('load', function() {
-            printWindow.print();
-          });
+        const blob = pdf.output("blob");
+        const blobUrl = URL.createObjectURL(blob);
+        const printWindow = window.open(blobUrl);
+        printWindow.addEventListener('load', function() {
+          printWindow.print();
         });
       });
     }
     
-    // 縮小印刷プレビュー（余白10mmを設定してスケーリング調整）
+    // 縮小印刷プレビュー（余白10mmを設定してスケーリング調整、対象はprintable-content内のDIV）
     function printPreviewScaled(printBtn) {
       var banner = printBtn.closest('.banner');
-      // 一時的にborderを非表示にする
-      banner.style.setProperty("border", "none", "important");
-      html2canvas(banner, { scale: 2 }).then(canvas => {
-        banner.style.removeProperty("border");
+      var printable = banner.querySelector('.printable-content');
+      html2canvas(printable, { scale: 2 }).then(canvas => {
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF('p', 'mm', 'a4');
         const margin = 10; // 10mmの余白
@@ -467,7 +455,8 @@
         const pageHeight = pdf.internal.pageSize.getHeight();
         const availableWidth = pageWidth - margin * 2;
         const availableHeight = pageHeight - margin * 2;
-        const imgProps = pdf.getImageProperties(canvas.toDataURL('image/png'));
+        const imgData = canvas.toDataURL('image/png');
+        const imgProps = pdf.getImageProperties(imgData);
         let pdfImgWidth = availableWidth;
         let pdfImgHeight = (imgProps.height * pdfImgWidth) / imgProps.width;
         if (pdfImgHeight > availableHeight) {
@@ -476,12 +465,12 @@
         }
         let heightLeft = pdfImgHeight;
         let position = margin;
-        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', margin, position, pdfImgWidth, pdfImgHeight);
+        pdf.addImage(imgData, 'PNG', margin, position, pdfImgWidth, pdfImgHeight);
         heightLeft -= availableHeight;
         while (heightLeft > 0) {
           position = margin - heightLeft;
           pdf.addPage();
-          pdf.addImage(canvas.toDataURL('image/png'), 'PNG', margin, position, pdfImgWidth, pdfImgHeight);
+          pdf.addImage(imgData, 'PNG', margin, position, pdfImgWidth, pdfImgHeight);
           heightLeft -= availableHeight;
         }
         const blob = pdf.output("blob");
