@@ -119,7 +119,7 @@ app.jinja_env.filters['render_stars'] = render_stars
 
 # 追加：マークダウンフィルターの登録
 def markdown_filter(text):
-    return markdown.markdown(text)
+    return markdown.markdown(text, extensions=['nl2br'])
 app.jinja_env.filters['markdown'] = markdown_filter
 
 @app.route("/", methods=["GET", "POST"])
