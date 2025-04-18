@@ -63,6 +63,18 @@
     .star-rating label:hover ~ label {
       color: gold;
     }
+    /* ── ここから追記 ── */
+    /* マークダウン変換後の段落余白をリセット */
+    .comment-container p {
+      margin: 0 0 8px;
+    }
+    /* コメント内のリンクを折り返しつつ目立たせる */
+    .comment-container a {
+      color: #007BFF;
+      text-decoration: underline;
+      word-break: break-all;
+    }
+    /* ── ここまで追記 ── */
     /* バナー全体のスタイル */
     .banner {
       border: 1px solid #ccc;
