@@ -177,7 +177,7 @@
 </head>
 <body>
   <h1>WEBサイト感想投稿サイト</h1>
-  <!-- 管理者権限の場合、一般ユーザ権限で閲覧するリンクを表示 -->
+
   {% if session.get("master") %}
     <div style="text-align: center; margin-bottom: 10px;">
       <a href="{{ url_for('admin_logout') }}">一般ユーザ権限で閲覧する</a>
@@ -187,6 +187,7 @@
       <a href="{{ url_for('admin_login') }}">管理者権限でログイン</a>
     </div>
   {% endif %}
+
   {% if error %}
     <p style="color:red; text-align:center;">{{ error }}</p>
   {% endif %}
@@ -194,10 +195,10 @@
   <!-- 入力フォーム -->
   <form method="POST">
     <label for="url">URLを入力してください:</label>
-    <input type="text" id="url" name="url" required>
+    <!-- required 属性を削除 -->
+    <input type="text" id="url" name="url">
     <br><br>
-    <label for="comment">URLに対する感想を入力してください:</label>
-    <br>
+    <label for="comment">URLに対する感想を入力してください:</label><br>
     <textarea id="comment" name="comment" rows="4" placeholder="感想を入力してください"></textarea>
     <br><br>
     <label for="tags">タグ (カンマ区切り、最大5つ):</label>
@@ -239,15 +240,23 @@
     <button type="submit">送信</button>
   </form>
   
-  <!-- 過去の入力データの表示 -->
+  <!-- タグフィルタ中の表示 -->
+  {% if tag_filter %}
+    <p style="text-align:center;">
+      フィルタ中: <strong>{{ tag_filter }}</strong>
+      <a href="{{ url_for('index') }}">クリア</a>
+    </p>
+  {% endif %}
+
+  <!-- 過去の入力データリスト -->
   <div class="project-list">
     <h2>過去の入力データ</h2>
     {% if projects %}
       {% for project in projects %}
         <div class="banner" id="banner{{ project.id }}">
-          <!-- 新たに内側のDIV（printable-content）を作成 -->
           <div class="printable-content">
-            <!-- 上部セクション：サムネイル、タイトル、URL、QRコード -->
+            <!-- ◆ URLありの場合のみ top-section を表示 ◆ -->
+            {% if project.url %}
             <div class="top-section">
               <div class="top-left">
                 {% if project.image %}
@@ -266,6 +275,8 @@
                 <div id="qrcode{{ project.id }}"></div>
               </div>
             </div>
+            {% endif %}
+            
             <!-- 中央セクション：感想（マークダウン変換） -->
             <div class="middle-section">
               {% set lines = project.comment.split('\n') %}
@@ -280,40 +291,37 @@
                 </div>
               {% endif %}
             </div>
-            <!-- 下部セクション：登録日、評価、いいね、編集、削除 -->
+            
+            <!-- 下部セクション -->
             <div class="bottom-section">
-              <div class="reg-date">
-                登録日: {{ project['登録日'] }}
-              </div>
-              <div class="rating-display">
-                評価: {{ project.rating | render_stars }}
-              </div>
+              <div class="reg-date">登録日: {{ project['登録日'] }}</div>
+              <div class="rating-display">評価: {{ project.rating | render_stars }}</div>
               <div class="like-section">
                 いいね: <span id="like-count-{{ project.id }}">{{ project.likes|default(0) }}</span>
                 <button onclick="toggleLike({{ project.id }})" style="background:none; border:none; cursor:pointer;">
                   <span id="like-icon-{{ project.id }}">👍いいね</span>
                 </button>
               </div>
-              <div class="edit-link">
-                <a href="{{ url_for('edit', project_id=project.id) }}">編集する</a>
-              </div>
+              <div class="edit-link"><a href="{{ url_for('edit', project_id=project.id) }}">編集する</a></div>
               {% if session.get("master") %}
                 <div class="delete-link">
                   <a href="{{ url_for('delete', project_id=project.id) }}" onclick="return confirm('本当に削除しますか？');">削除する</a>
                 </div>
               {% endif %}
             </div>
-            <!-- タグ表示（タグが存在する場合のみ） -->
+            
+            <!-- ◆ タグはリンクにしてフィルタ可能に ◆ -->
             {% if project.tags and project.tags|length > 0 %}
             <div class="tags">
               <div class="tag-label">タグ:</div>
               <div class="tag-list">
                 {% for tag in project.tags %}
-                  <span class="tag-box">{{ tag }}</span>
+                  <a href="{{ url_for('index', tag=tag) }}" class="tag-box">{{ tag }}</a>
                 {% endfor %}
               </div>
             </div>
             {% endif %}
+            
           </div><!-- /.printable-content -->
         </div>
         <script>
@@ -492,3 +500,4 @@
   </script>
 </body>
 </html>
+
