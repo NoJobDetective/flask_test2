@@ -56,14 +56,12 @@
       color: #ccc;
       cursor: pointer;
     }
-    .star-rating input[type="radio"]:checked ~ label {
-      color: gold;
-    }
+    .star-rating input[type="radio"]:checked ~ label,
     .star-rating label:hover,
     .star-rating label:hover ~ label {
       color: gold;
     }
-    /* ── ここから追記 ── */
+
     /* マークダウン変換後の段落余白をリセット */
     .comment-container p {
       margin: 0 0 8px;
@@ -74,7 +72,7 @@
       text-decoration: underline;
       word-break: break-all;
     }
-    /* ── ここまで追記 ── */
+
     /* バナー全体のスタイル */
     .banner {
       border: 1px solid #ccc;
@@ -163,16 +161,21 @@
       border-radius: 4px;
       margin-right: 4px;
       margin-bottom: 4px;
+      cursor: pointer;
     }
-    /* タグの独立表示 */
-    .tags {
-      margin-top: 10px;
+    /* フィルター解除ボタン */
+    #clear-filter {
+      display: none;
+      margin: 10px auto;
+      padding: 6px 12px;
+      background-color: #dc3545;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
     }
-    .tag-label {
-      font-weight: bold;
-    }
-    .tag-list {
-      margin-top: 5px;
+    #clear-filter:hover {
+      background-color: #c82333;
     }
     /* レスポンシブ対応 */
     @media screen and (max-width: 600px) {
@@ -200,14 +203,12 @@
     </div>
   {% endif %}
 
-  {% if error %}
-    <p style="color:red; text-align:center;">{{ error }}</p>
-  {% endif %}
-  
+  <!-- フィルター解除ボタン -->
+  <button id="clear-filter">フィルター解除</button>
+
   <!-- 入力フォーム -->
   <form method="POST">
     <label for="url">URLを入力してください:</label>
-    <!-- required 属性を削除 -->
     <input type="text" id="url" name="url">
     <br><br>
     <label for="comment">URLに対する感想を入力してください:</label><br>
@@ -218,78 +219,48 @@
     <br><br>
     <label for="rating">評価:</label>
     <div class="star-rating">
-      <input type="radio" id="star10" name="rating" value="10">
-      <label for="star10" title="10点"><i class="fas fa-star"></i></label>
-      
-      <input type="radio" id="star9" name="rating" value="9">
-      <label for="star9" title="9点"><i class="fas fa-star"></i></label>
-      
-      <input type="radio" id="star8" name="rating" value="8">
-      <label for="star8" title="8点"><i class="fas fa-star"></i></label>
-      
-      <input type="radio" id="star7" name="rating" value="7">
-      <label for="star7" title="7点"><i class="fas fa-star"></i></label>
-      
-      <input type="radio" id="star6" name="rating" value="6">
-      <label for="star6" title="6点"><i class="fas fa-star"></i></label>
-      
-      <input type="radio" id="star5" name="rating" value="5" checked>
-      <label for="star5" title="5点"><i class="fas fa-star"></i></label>
-      
-      <input type="radio" id="star4" name="rating" value="4">
-      <label for="star4" title="4点"><i class="fas fa-star"></i></label>
-      
-      <input type="radio" id="star3" name="rating" value="3">
-      <label for="star3" title="3点"><i class="fas fa-star"></i></label>
-      
-      <input type="radio" id="star2" name="rating" value="2">
-      <label for="star2" title="2点"><i class="fas fa-star"></i></label>
-      
-      <input type="radio" id="star1" name="rating" value="1">
-      <label for="star1" title="1点"><i class="fas fa-star"></i></label>
+      <input type="radio" id="star10" name="rating" value="10"><label for="star10" title="10点"><i class="fas fa-star"></i></label>
+      <input type="radio" id="star9"  name="rating" value="9"><label  for="star9"  title="9点"><i class="fas fa-star"></i></label>
+      <input type="radio" id="star8"  name="rating" value="8"><label  for="star8"  title="8点"><i class="fas fa-star"></i></label>
+      <input type="radio" id="star7"  name="rating" value="7"><label  for="star7"  title="7点"><i class="fas fa-star"></i></label>
+      <input type="radio" id="star6"  name="rating" value="6"><label  for="star6"  title="6点"><i class="fas fa-star"></i></label>
+      <input type="radio" id="star5"  name="rating" value="5" checked><label for="star5" title="5点"><i class="fas fa-star"></i></label>
+      <input type="radio" id="star4"  name="rating" value="4"><label  for="star4"  title="4点"><i class="fas fa-star"></i></label>
+      <input type="radio" id="star3"  name="rating" value="3"><label  for="star3"  title="3点"><i class="fas fa-star"></i></label>
+      <input type="radio" id="star2"  name="rating" value="2"><label  for="star2"  title="2点"><i class="fas fa-star"></i></label>
+      <input type="radio" id="star1"  name="rating" value="1"><label  for="star1"  title="1点"><i class="fas fa-star"></i></label>
     </div>
     <br><br>
     <button type="submit">送信</button>
   </form>
-  
-  <!-- タグフィルタ中の表示 -->
-  {% if tag_filter %}
-    <p style="text-align:center;">
-      フィルタ中: <strong>{{ tag_filter }}</strong>
-      <a href="{{ url_for('index') }}">クリア</a>
-    </p>
-  {% endif %}
 
-  <!-- 過去の入力データリスト -->
   <div class="project-list">
     <h2>過去の入力データ</h2>
     {% if projects %}
       {% for project in projects %}
-        <div class="banner" id="banner{{ project.id }}">
+        <div class="banner" id="banner{{ project.id }}" data-tags="{{ project.tags | join(',') }}">
           <div class="printable-content">
-            <!-- ◆ URLありの場合のみ top-section を表示 ◆ -->
             {% if project.url %}
-            <div class="top-section">
-              <div class="top-left">
-                {% if project.image %}
-                  <img src="{{ project.image }}" alt="サムネイル">
-                {% else %}
-                  <div class="placeholder">サムネイル取得不可</div>
-                {% endif %}
-              </div>
-              <div class="top-middle">
-                <div class="title">{{ project.title }}</div>
-                <div class="link">
-                  <a href="{{ project.url }}" target="_blank">{{ project.url }}</a>
+              <div class="top-section">
+                <div class="top-left">
+                  {% if project.image %}
+                    <img src="{{ project.image }}" alt="サムネイル">
+                  {% else %}
+                    <div class="placeholder">サムネイル取得不可</div>
+                  {% endif %}
+                </div>
+                <div class="top-middle">
+                  <div class="title">{{ project.title }}</div>
+                  <div class="link">
+                    <a href="{{ project.url }}" target="_blank">{{ project.url }}</a>
+                  </div>
+                </div>
+                <div class="top-right">
+                  <div id="qrcode{{ project.id }}"></div>
                 </div>
               </div>
-              <div class="top-right">
-                <div id="qrcode{{ project.id }}"></div>
-              </div>
-            </div>
             {% endif %}
-            
-            <!-- 中央セクション：感想（マークダウン変換） -->
+
             <div class="middle-section">
               {% set lines = project.comment.split('\n') %}
               {% if lines|length > 4 %}
@@ -303,8 +274,7 @@
                 </div>
               {% endif %}
             </div>
-            
-            <!-- 下部セクション -->
+
             <div class="bottom-section">
               <div class="reg-date">登録日: {{ project['登録日'] }}</div>
               <div class="rating-display">評価: {{ project.rating | render_stars }}</div>
@@ -321,20 +291,18 @@
                 </div>
               {% endif %}
             </div>
-            
-            <!-- ◆ タグはリンクにしてフィルタ可能に ◆ -->
+
             {% if project.tags and project.tags|length > 0 %}
-            <div class="tags">
-              <div class="tag-label">タグ:</div>
-              <div class="tag-list">
-                {% for tag in project.tags %}
-                  <a href="{{ url_for('index', tag=tag) }}" class="tag-box">{{ tag }}</a>
-                {% endfor %}
+              <div class="tags">
+                <div class="tag-label">タグ:</div>
+                <div class="tag-list">
+                  {% for tag in project.tags %}
+                    <span class="tag-box filter-tag" data-tag="{{ tag }}">{{ tag }}</span>
+                  {% endfor %}
+                </div>
               </div>
-            </div>
             {% endif %}
-            
-          </div><!-- /.printable-content -->
+          </div>
         </div>
         <script>
           new QRCode(document.getElementById("qrcode{{ project.id }}"), {
@@ -351,8 +319,31 @@
       <p style="text-align:center;">入力されたデータはありません。</p>
     {% endif %}
   </div>
-  
+
   <script>
+    // タグクリックでクライアントサイドフィルター
+    document.addEventListener('DOMContentLoaded', function() {
+      const banners = document.querySelectorAll('.banner');
+      const tags = document.querySelectorAll('.filter-tag');
+      const clearBtn = document.getElementById('clear-filter');
+
+      tags.forEach(el => {
+        el.addEventListener('click', function() {
+          const tag = this.getAttribute('data-tag');
+          banners.forEach(b => {
+            const tagList = b.getAttribute('data-tags').split(',');
+            b.style.display = tagList.includes(tag) ? '' : 'none';
+          });
+          clearBtn.style.display = 'block';
+        });
+      });
+
+      clearBtn.addEventListener('click', function() {
+        banners.forEach(b => b.style.display = '');
+        clearBtn.style.display = 'none';
+      });
+    });
+
     function toggleLike(projectId) {
       var liked = localStorage.getItem("liked_" + projectId);
       var url = liked ? "/unlike/" + projectId : "/like/" + projectId;
