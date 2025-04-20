@@ -7,7 +7,7 @@ import sys
 
 # ── 設定 ──
 # projects.json の絶対パスを指定
-PROJECTS_FILE = '~/flask_project/flask_test2/projects.json'
+PROJECTS_FILE = '/home/keitapom/flask_project/flask_test2/projects.json'
 BACKUP_FILE   = PROJECTS_FILE + '.bak'
 
 def load_projects(path):
