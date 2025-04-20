@@ -350,9 +350,7 @@
       fetch(url, { method: "POST" })
       .then(response => response.json())
       .then(data => {
-        // いいね数を更新
         document.getElementById("like-count-" + projectId).textContent = data.likes;
-
         if (liked) {
           localStorage.removeItem("liked_" + projectId);
           document.getElementById("like-icon-" + projectId).style.color = "";
@@ -368,10 +366,8 @@
 
     function toggleComment(button) {
       var commentContainer = button.previousElementSibling;
-      var banner = button.closest('.banner');
-      // 閉じていたら他を閉じてから開く
+      // 他の開いているエリアとボタンをリセット
       if (commentContainer.classList.contains('collapsed')) {
-        // 他の開いているエリアとボタンをリセット
         var allContainers = document.querySelectorAll('.comment-container');
         var allToggleButtons = document.querySelectorAll('.toggle-comment');
         var allPrintButtons = document.querySelectorAll('.print-preview-btn, .print-preview-scaled-btn');
@@ -387,8 +383,6 @@
         // 展開処理
         commentContainer.classList.remove('collapsed');
         button.textContent = 'タップで閉じる';
-        // 展開した場所が途中にならないよう、バナーの先頭までスクロール
-        banner.scrollIntoView({ behavior: 'smooth', block: 'start' });
         // 印刷プレビューボタン追加
         if (!button.nextElementSibling || !button.nextElementSibling.classList.contains('print-preview-btn')) {
           var printBtn = document.createElement('button');
