@@ -344,25 +344,28 @@
       });
     });
 
-    function toggleLike(projectId) {
-      var liked = localStorage.getItem("liked_" + projectId);
-      var url = liked ? "/unlike/" + projectId : "/like/" + projectId;
-      fetch(url, { method: "POST" })
-      .then(response => response.json())
-      .then(data => {
-        document.getElementById("like-count-" + projectId).textContent = data.likes;
-        if (liked) {
-          localStorage.removeItem("liked_" + projectId);
-          document.getElementById("like-icon-{{ project.id }}").style.color = "";
-        } else {
-          localStorage.setItem("liked_" + projectId, "true");
-          document.getElementById("like-icon-{{ project.id }}").style.color = "red";
-        }
-      })
-      .catch(error => {
-        console.error("Error:", error);
-      });
-    }
+  function toggleLike(projectId) {
+    var liked = localStorage.getItem("liked_" + projectId);
+    var url = liked ? "/unlike/" + projectId : "/like/" + projectId;
+    fetch(url, { method: "POST" })
+    .then(response => response.json())
+    .then(data => {
+      // いいね数を更新
+      document.getElementById("like-count-" + projectId).textContent = data.likes;
+
+      if (liked) {
+        localStorage.removeItem("liked_" + projectId);
+        // Jinja を使わず JS 変数で動的に参照
+        document.getElementById("like-icon-" + projectId).style.color = "";
+      } else {
+        localStorage.setItem("liked_" + projectId, "true");
+        document.getElementById("like-icon-" + projectId).style.color = "red";
+      }
+    })
+    .catch(error => {
+      console.error("Error:", error);
+    });
+  }
     
     function toggleComment(button) {
       var commentContainer = button.previousElementSibling;
