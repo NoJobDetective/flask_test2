@@ -120,10 +120,9 @@
     /* コメントエリア（開閉対象） */
     .comment-container {
       transition: max-height 0.3s ease;
-    }
-    .comment-container.collapsed {
-      max-height: 60px;
-      overflow: hidden;
+      /* デフォルトで高さ制限なし */
+      max-height: none !important;
+      overflow: visible !important;
     }
     .toggle-comment, .print-preview-btn, .print-preview-scaled-btn {
       display: inline-block;
@@ -262,17 +261,9 @@
             {% endif %}
 
             <div class="middle-section">
-              {% set lines = project.comment.split('\n') %}
-              {% if lines|length > 4 %}
-                <div class="comment-container collapsed">
-                  {{ project.comment | markdown | safe }}
-                </div>
-                <button type="button" class="toggle-comment" onclick="toggleComment(this)">タップで開く</button>
-              {% else %}
-                <div class="comment-container">
-                  {{ project.comment | markdown | safe }}
-                </div>
-              {% endif %}
+              <div class="comment-container">
+                {{ project.comment | markdown | safe }}
+              </div>
             </div>
 
             <div class="bottom-section">
@@ -359,51 +350,12 @@
           document.getElementById("like-icon-" + projectId).style.color = "red";
         }
       })
-      .catch(error => console.error("Error:", error));
+      .catch(error => {
+        console.error("Error:", error);
+      });
     }
 
-    function toggleComment(button) {
-      var commentContainer = button.previousElementSibling;
-      // スクロールを行わず、開閉だけ行う
-      if (commentContainer.classList.contains('collapsed')) {
-        // 他のエリアを閉じる
-        document.querySelectorAll('.comment-container').forEach(c => c.classList.add('collapsed'));
-        document.querySelectorAll('.toggle-comment').forEach(b => b.textContent = 'タップで開く');
-        document.querySelectorAll('.print-preview-btn, .print-preview-scaled-btn').forEach(b => b.remove());
-        // 展開
-        commentContainer.classList.remove('collapsed');
-        button.textContent = 'タップで閉じる';
-        // 印刷プレビューボタン追加
-        if (!button.nextElementSibling || !button.nextElementSibling.classList.contains('print-preview-btn')) {
-          var printBtn = document.createElement('button');
-          printBtn.type = "button";
-          printBtn.className = "print-preview-btn";
-          printBtn.textContent = "印刷プレビューを表示";
-          printBtn.style.marginLeft = "10px";
-          printBtn.onclick = function() { printPreview(this); };
-          button.parentNode.insertBefore(printBtn, button.nextSibling);
-          var printScaledBtn = document.createElement('button');
-          printScaledBtn.type = "button";
-          printScaledBtn.className = "print-preview-scaled-btn";
-          printScaledBtn.textContent = "縮小印刷プレビューを表示";
-          printScaledBtn.style.marginLeft = "10px";
-          printScaledBtn.onclick = function() { printPreviewScaled(this); };
-          button.parentNode.insertBefore(printScaledBtn, printBtn.nextSibling);
-        }
-      } else {
-        // 折りたたみ
-        commentContainer.classList.add('collapsed');
-        button.textContent = 'タップで開く';
-        var next = button.nextElementSibling;
-        if (next && (next.classList.contains('print-preview-btn') || next.classList.contains('print-preview-scaled-btn'))) {
-          next.remove();
-          if (button.nextElementSibling && button.nextElementSibling.classList.contains('print-preview-scaled-btn')) {
-            button.nextElementSibling.remove();
-          }
-        }
-      }
-    }
-
+    // 印刷プレビュー（通常版）
     function printPreview(printBtn) {
       var banner = printBtn.closest('.banner');
       var printable = banner.querySelector('.printable-content');
@@ -419,25 +371,26 @@
           pages.push({ start: currentY, end: Math.min(currentY + pageBreakHeight, bannerHeight) });
           currentY += pageBreakHeight;
         }
-        pages.forEach((page, idx) => {
-          var sy = page.start * scaleFactor;
+        pages.forEach((page, index) => {
+          var startY = page.start * scaleFactor;
           var pageCanvas = document.createElement('canvas');
           pageCanvas.width = canvas.width;
           pageCanvas.height = (page.end - page.start) * scaleFactor;
           var ctx = pageCanvas.getContext('2d');
-          ctx.drawImage(canvas, 0, sy, canvas.width, pageCanvas.height, 0, 0, canvas.width, pageCanvas.height);
-          const imgData = pageCanvas.toDataURL('image/png');
-          var imgW = pageWidth;
-          var imgH = (pageCanvas.height * imgW) / pageCanvas.width;
-          pdfDoc.addImage(imgData, 'PNG', 0, 0, imgW, imgH);
-          if (idx < pages.length - 1) pdfDoc.addPage();
+          ctx.drawImage(canvas, 0, startY, canvas.width, pageCanvas.height, 0, 0, canvas.width, pageCanvas.height);
+          const pageImgData = pageCanvas.toDataURL('image/png');
+          var imgWidth = pageWidth;
+          var imgHeight = (pageCanvas.height * imgWidth) / pageCanvas.width;
+          pdfDoc.addImage(pageImgData, 'PNG', 0, 0, imgWidth, imgHeight);
+          if (index < pages.length - 1) pdfDoc.addPage();
         });
         const blobUrl = URL.createObjectURL(pdfDoc.output("blob"));
-        var w = window.open(blobUrl);
-        w.addEventListener('load', () => w.print());
+        var printWindow = window.open(blobUrl);
+        printWindow.addEventListener('load', () => printWindow.print());
       });
     }
 
+    // 縮小印刷プレビュー
     function printPreviewScaled(printBtn) {
       var banner = printBtn.closest('.banner');
       var printable = banner.querySelector('.printable-content');
@@ -445,27 +398,31 @@
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF('p', 'mm', 'a4');
         const margin = 10;
-        const pw = pdf.internal.pageSize.getWidth();
-        const ph = pdf.internal.pageSize.getHeight();
-        const aw = pw - margin * 2;
-        const ah = ph - margin * 2;
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const availableWidth = pageWidth - margin * 2;
+        const availableHeight = pageHeight - margin * 2;
         const imgData = canvas.toDataURL('image/png');
-        const props = pdf.getImageProperties(imgData);
-        let wImg = aw;
-        let hImg = (props.height * wImg) / props.width;
-        if (hImg > ah) { hImg = ah; wImg = (props.width * hImg) / props.height; }
-        let left = margin;
-        let top = margin;
-        pdf.addImage(imgData, 'PNG', left, top, wImg, hImg);
-        let rem = hImg - ah;
-        while (rem > 0) {
+        const imgProps = pdf.getImageProperties(imgData);
+        let pdfImgWidth = availableWidth;
+        let pdfImgHeight = (imgProps.height * pdfImgWidth) / imgProps.width;
+        if (pdfImgHeight > availableHeight) {
+          pdfImgHeight = availableHeight;
+          pdfImgWidth = (imgProps.width * pdfImgHeight) / imgProps.height;
+        }
+        let heightLeft = pdfImgHeight;
+        let position = margin;
+        pdf.addImage(imgData, 'PNG', margin, position, pdfImgWidth, pdfImgHeight);
+        heightLeft -= availableHeight;
+        while (heightLeft > 0) {
+          position = margin - heightLeft;
           pdf.addPage();
-          pdf.addImage(imgData, 'PNG', left, top - (hImg - rem), wImg, hImg);
-          rem -= ah;
+          pdf.addImage(imgData, 'PNG', margin, position, pdfImgWidth, pdfImgHeight);
+          heightLeft -= availableHeight;
         }
         const blobUrl = URL.createObjectURL(pdf.output("blob"));
-        var w2 = window.open(blobUrl);
-        w2.addEventListener('load', () => w2.print());
+        var printWindow = window.open(blobUrl);
+        printWindow.addEventListener('load', () => printWindow.print());
       });
     }
   </script>
