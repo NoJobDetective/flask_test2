@@ -152,6 +152,24 @@
     .reg-date {
       font-weight: bold;
     }
+    /* 統合されたいいねボタン */
+    .like-button {
+      display: flex;
+      align-items: center;
+      gap: 0.5em;
+      background-color: transparent;
+      border: none;
+      cursor: pointer;
+      font-size: 1.5rem;
+      padding: 6px 10px;
+      border-radius: 6px;
+    }
+    .like-button:hover {
+      background-color: #f0f0f0;
+    }
+    .like-button .like-icon {
+      font-size: 1.5em;
+    }
     /* タグボックスのスタイル */
     .tag-box {
       display: inline-block;
@@ -269,12 +287,11 @@
             <div class="bottom-section">
               <div class="reg-date">登録日: {{ project['登録日'] }}</div>
               <div class="rating-display">評価: {{ project.rating | render_stars }}</div>
-              <div class="like-section">
-                いいね: <span id="like-count-{{ project.id }}">{{ project.likes|default(0) }}</span>
-                <button onclick="toggleLike({{ project.id }})" style="background:none; border:none; cursor:pointer;">
-                  <span id="like-icon-{{ project.id }}">👍いいね</span>
-                </button>
-              </div>
+              <!-- 統合されたいいねボタン -->
+              <button id="like-btn-{{ project.id }}" class="like-button" onclick="toggleLike({{ project.id }})">
+                <span id="like-icon-{{ project.id }}" class="like-icon">👍</span>
+                <span id="like-count-{{ project.id }}">{{ project.likes|default(0) }}</span>
+              </button>
               <div class="edit-link"><a href="{{ url_for('edit', project_id=project.id) }}">編集する</a></div>
               {% if session.get("master") %}
                 <div class="delete-link">
@@ -420,7 +437,7 @@
           pdf.addImage(imgData, 'PNG', margin, position, pdfImgWidth, pdfImgHeight);
           heightLeft -= availableHeight;
         }
-        const blobUrl = URL.createObjectURL(pdf.output("blob"));
+        const blobUrl = URL.createObjectURL(pdf.output("blob"]);
         var printWindow = window.open(blobUrl);
         printWindow.addEventListener('load', () => printWindow.print());
       });
