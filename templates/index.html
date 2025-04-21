@@ -338,7 +338,7 @@
   </div>
 
   <script>
-    // タグクリックでクライアントサイドフィルター
+    // タグクリックでクライアントサイドフィルター（data-tagsをtrimして正しく比較）
     document.addEventListener('DOMContentLoaded', function() {
       const banners = document.querySelectorAll('.banner');
       const tags = document.querySelectorAll('.filter-tag');
@@ -348,7 +348,8 @@
         el.addEventListener('click', function() {
           const tag = this.getAttribute('data-tag');
           banners.forEach(b => {
-            const tagList = b.getAttribute('data-tags').split(',');
+            // ★ 修正箇所：split後にtrim() をかけて余分な空白を削除
+            const tagList = b.getAttribute('data-tags').split(',').map(t => t.trim());
             b.style.display = tagList.includes(tag) ? '' : 'none';
           });
           clearBtn.style.display = 'block';
