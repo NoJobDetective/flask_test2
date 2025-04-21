@@ -189,6 +189,21 @@
     .like-button:hover {
       background-color: #f0f0f0;
     }
+    /* 削除ボタン（×） */
+    .delete-button {
+      display: inline-block;
+      border: 1px solid #ccc;
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-size: 1.2rem;
+      cursor: pointer;
+      background-color: white;
+      color: #333;
+      text-decoration: none;
+    }
+    .delete-button:hover {
+      background-color: #f8f8f8;
+    }
     /* レスポンシブ対応 */
     @media screen and (max-width: 600px) {
       .top-section {
@@ -290,7 +305,7 @@
               <div class="edit-link"><a href="{{ url_for('edit', project_id=project.id) }}">編集する</a></div>
               {% if session.get("master") %}
                 <div class="delete-link">
-                  <a href="{{ url_for('delete', project_id=project.id) }}" onclick="return confirm('本当に削除しますか？');">削除する</a>
+                  <a href="{{ url_for('delete', project_id=project.id) }}" class="delete-button">×</a>
                 </div>
               {% endif %}
             </div>
@@ -413,8 +428,8 @@
         const margin = 10;
         const pageWidth = pdf.internal.pageSize.getWidth();
         const pageHeight = pdf.internal.pageSize.getHeight();
-        const availableWidth = pageWidth - margin * 2;
-        const availableHeight = pageHeight - margin * 2;
+        const availableWidth = pageWidth - margin*2;
+        const availableHeight = pageHeight - margin*2;
         const imgData = canvas.toDataURL('image/png');
         const imgProps = pdf.getImageProperties(imgData);
         let pdfImgWidth = availableWidth;
