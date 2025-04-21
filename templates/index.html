@@ -152,24 +152,6 @@
     .reg-date {
       font-weight: bold;
     }
-    /* 統合されたいいねボタン */
-    .like-button {
-      display: flex;
-      align-items: center;
-      gap: 0.5em;
-      background-color: transparent;
-      border: none;
-      cursor: pointer;
-      font-size: 1.5rem;
-      padding: 6px 10px;
-      border-radius: 6px;
-    }
-    .like-button:hover {
-      background-color: #f0f0f0;
-    }
-    .like-button .like-icon {
-      font-size: 1.5em;
-    }
     /* タグボックスのスタイル */
     .tag-box {
       display: inline-block;
@@ -193,6 +175,19 @@
     }
     #clear-filter:hover {
       background-color: #c82333;
+    }
+    /* いいねボタン */
+    .like-button {
+      display: inline-block;
+      border: 1px solid #ccc;
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-size: 1.2rem;
+      cursor: pointer;
+      margin-right: 4px;
+    }
+    .like-button:hover {
+      background-color: #f0f0f0;
     }
     /* レスポンシブ対応 */
     @media screen and (max-width: 600px) {
@@ -287,11 +282,11 @@
             <div class="bottom-section">
               <div class="reg-date">登録日: {{ project['登録日'] }}</div>
               <div class="rating-display">評価: {{ project.rating | render_stars }}</div>
-              <!-- 統合されたいいねボタン -->
-              <button id="like-btn-{{ project.id }}" class="like-button" onclick="toggleLike({{ project.id }})">
-                <span id="like-icon-{{ project.id }}" class="like-icon">👍</span>
-                <span id="like-count-{{ project.id }}">{{ project.likes|default(0) }}</span>
-              </button>
+              <div class="like-section">
+                <button class="like-button" onclick="toggleLike({{ project.id }})">
+                  いいね {{ project.likes|default(0) }}
+                </button>
+              </div>
               <div class="edit-link"><a href="{{ url_for('edit', project_id=project.id) }}">編集する</a></div>
               {% if session.get("master") %}
                 <div class="delete-link">
@@ -358,13 +353,14 @@
       fetch(url, { method: "POST" })
       .then(response => response.json())
       .then(data => {
-        document.getElementById("like-count-" + projectId).textContent = data.likes;
+        var btn = document.querySelector('#banner' + projectId + ' .like-button');
+        btn.textContent = 'いいね ' + data.likes;
         if (liked) {
           localStorage.removeItem("liked_" + projectId);
-          document.getElementById("like-icon-" + projectId).style.color = "";
+          btn.style.color = '';
         } else {
           localStorage.setItem("liked_" + projectId, "true");
-          document.getElementById("like-icon-" + projectId).style.color = "red";
+          btn.style.color = 'red';
         }
       })
       .catch(error => {
@@ -437,7 +433,7 @@
           pdf.addImage(imgData, 'PNG', margin, position, pdfImgWidth, pdfImgHeight);
           heightLeft -= availableHeight;
         }
-        const blobUrl = URL.createObjectURL(pdf.output("blob"]);
+        const blobUrl = URL.createObjectURL(pdf.output("blob"));
         var printWindow = window.open(blobUrl);
         printWindow.addEventListener('load', () => printWindow.print());
       });
