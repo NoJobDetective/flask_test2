@@ -232,6 +232,7 @@
   <!-- フィルター解除ボタン -->
   <button id="clear-filter">フィルター解除</button>
 
+  {% if session.get("master") %}
   <!-- 入力フォーム -->
   <form method="POST">
     <label for="url">URLを入力してください:</label>
@@ -259,7 +260,8 @@
     <br><br>
     <button type="submit">送信</button>
   </form>
-
+  {% endif %}
+  
   <div class="project-list">
     <h2>過去の入力データ</h2>
     {% if projects %}
