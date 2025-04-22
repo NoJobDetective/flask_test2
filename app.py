@@ -18,6 +18,7 @@ app.secret_key = "mysecretkey"  # 適宜変更してください
 # projects.json の絶対パス
 PROJECTS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "projects.json")
 
+
 def get_metadata(url):
     try:
         response = requests.get(url)
@@ -34,7 +35,7 @@ def get_metadata(url):
                 "url": url
             }
         response.raise_for_status()
-    except Exception as e:
+    except Exception:
         parsed = urlparse(url)
         domain = parsed.netloc
         if domain.startswith("www."):
@@ -85,6 +86,7 @@ def get_metadata(url):
         "url": url
     }
 
+
 def load_projects():
     if os.path.exists(PROJECTS_FILE):
         try:
@@ -94,12 +96,14 @@ def load_projects():
             return []
     return []
 
+
 def save_all_projects(projects):
     try:
         with open(PROJECTS_FILE, "w", encoding="utf-8") as f:
             json.dump(projects, f, ensure_ascii=False, indent=2)
     except IOError as e:
         print(f"保存エラー: {e}")
+
 
 def render_stars(rating):
     try:
@@ -110,11 +114,16 @@ def render_stars(rating):
     empty = 10 - full
     return "★" * full + "☆" * empty
 
+
 app.jinja_env.filters['render_stars'] = render_stars
+
 
 def markdown_filter(text):
     return markdown.markdown(text, extensions=['nl2br'])
+
+
 app.jinja_env.filters['markdown'] = markdown_filter
+
 
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -174,16 +183,19 @@ def index():
 
     return render_template("index.html", projects=projects, tag_filter=tag_filter)
 
+
 @app.route("/admin-login")
 def admin_login():
     session["authenticated"] = True
     session["master"] = True
     return redirect(url_for("index"))
 
+
 @app.route("/admin-logout")
 def admin_logout():
     session.pop("master", None)
     return redirect(url_for("index"))
+
 
 @app.route("/edit/<int:project_id>", methods=["GET", "POST"])
 def edit(project_id):
@@ -222,6 +234,7 @@ def edit(project_id):
 
     return render_template("edit.html", project=project, project_id=project_id)
 
+
 @app.route("/like/<int:project_id>", methods=["POST"])
 def like(project_id):
     projects = load_projects()
@@ -231,6 +244,7 @@ def like(project_id):
     project["likes"] = project.get("likes", 0) + 1
     save_all_projects(projects)
     return jsonify({"likes": project["likes"]})
+
 
 @app.route("/unlike/<int:project_id>", methods=["POST"])
 def unlike(project_id):
@@ -243,6 +257,7 @@ def unlike(project_id):
     save_all_projects(projects)
     return jsonify({"likes": project["likes"]})
 
+
 @app.route("/delete/<int:project_id>")
 def delete(project_id):
     if not session.get("master"):
@@ -251,6 +266,35 @@ def delete(project_id):
     new_projects = [p for p in projects if p.get("id") != project_id]
     save_all_projects(new_projects)
     return redirect(url_for("index"))
+
+
+# ── likes が 0 のプロジェクトを削除するクリーンアップエンドポイント ──
+@app.route("/d")
+def cleanup_projects():
+    # プロジェクトファイルの存在確認
+    if not os.path.exists(PROJECTS_FILE):
+        return f'ERROR: {PROJECTS_FILE} が見つかりません', 500
+
+    # バックアップ作成
+    BACKUP_FILE = PROJECTS_FILE + '.bak'
+    os.replace(PROJECTS_FILE, BACKUP_FILE)
+
+    # バックアップファイルから読み込み
+    try:
+        with open(BACKUP_FILE, 'r', encoding='utf-8') as f:
+            projects = json.load(f)
+    except Exception as e:
+        return f'バックアップ読み込みエラー: {e}', 500
+
+    # likes が 0 のものを除去
+    cleaned = [p for p in projects if p.get("likes", 0) != 0]
+
+    # クリーンなデータを保存
+    save_all_projects(cleaned)
+
+    # インデックスページへリダイレクト
+    return redirect(url_for("index"))
+
 
 if __name__ == "__main__":
     app.run(debug=True)
