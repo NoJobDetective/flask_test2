@@ -185,6 +185,7 @@
   /* 統一レイアウトのアクションボタン */
   .delete-button,
   .like-button,
+  .print-button,
   .edit-link a {
     display: inline-block;
     border: 1px solid #ccc;
@@ -199,6 +200,7 @@
   }
   .delete-button:hover,
   .like-button:hover,
+  .print-button:hover,
   .edit-link a:hover {
     background-color: #f8f8f8;
   }
@@ -233,6 +235,7 @@
   <button id="clear-filter">フィルター解除</button>
 
   {% if session.get("master") %}
+  {% else %}
   <!-- 入力フォーム -->
   <form method="POST">
     <label for="url">URLを入力してください:</label>
@@ -303,11 +306,13 @@
                   いいね {{ project.likes|default(0) }}
                 </button>
               </div>
-              <div class="edit-link"><a href="{{ url_for('edit', project_id=project.id) }}">編集する</a></div>
               {% if session.get("master") %}
-                <div class="delete-link">
-                  <a href="{{ url_for('delete', project_id=project.id) }}" class="delete-button">×</a>
-                </div>
+              <div class="edit-link"><a href="{{ url_for('edit', project_id=project.id) }}">編集する</a></div>
+              <div class="delete-link"> <a href="{{ url_for('delete', project_id=project.id) }}" class="delete-button">×</a></div>
+              {% else %}
+              <div class="print-link"><button class="print-button" onclick="printPreviewScaled(this)">
+                  印刷する
+                </button></div>
               {% endif %}
             </div>
 
