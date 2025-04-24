@@ -69,7 +69,7 @@
     <br><br>
     <label for="comment">URLに対する感想を入力してください:</label>
     <br>
-    <textarea id="comment" name="comment" rows="10">{{ project.comment }}</textarea>
+    <textarea id="comment" name="comment" rows="20">{{ project.comment }}</textarea>
     <br><br>
     <label for="tags">タグ (カンマ区切り、最大5つ):</label>
     <input type="text" id="tags" name="tags" class="tags-input" value="{{ project.tags|default([])|join(', ') }}">
