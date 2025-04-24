@@ -229,18 +229,6 @@
     <div style="text-align: center; margin-bottom: 10px;">
       <a href="{{ url_for('admin_login') }}">管理者権限でログイン</a>
     </div>
-  <!-- ★ 検索フォーム -->
-  <form method="GET" style="max-width:800px;margin:auto;margin-bottom:20px;">
-    <input type="text" name="q" placeholder="キーワード検索" value="{{ q or '' }}" style="width:60%;">
-    <input type="date" name="start_date"  value="{{ start_date or '' }}">
-    <input type="date" name="end_date"    value="{{ end_date or '' }}">
-    <input type="number" name="rating_min" placeholder="評価最小" style="width:80px;" value="{{ rating_min or '' }}" min="0" max="10">
-    <input type="number" name="rating_max" placeholder="評価最大" style="width:80px;" value="{{ rating_max or '' }}" min="0" max="10">
-    <button type="submit">検索</button>
-    {% if q or start_date or end_date or rating_min or rating_max %}
-      <a href="{{ url_for('index') }}">クリア</a>
-    {% endif %}
-  </form>
   {% endif %}
 
   <!-- フィルター解除ボタン -->
