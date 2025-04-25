@@ -293,32 +293,36 @@ def unlike(project_id):
         project["likes"] -= 1
     save_all_projects(projects)
     return jsonify({"likes": project["likes"]})
+    @app.route("/delete/<int:project_id>", methods=["GET", "POST"])
     
-@app.route("/delete/<int:project_id>")
 def delete(project_id):
-    # 管理者権限チェック
+    """
+    指定 ID のプロジェクトを削除する。
+    ・管理者セッション（master）が必須
+    ・残り 1 件を削除する場合は意図的な空リストとして扱い、
+      バックアップを破棄して self-restore を防ぐ
+    """
     if not session.get("master"):
         return "削除権限がありません", 403
 
-    # 現在のプロジェクト一覧を読み込み
-    projects = load_projects()
-    orig_count = len(projects)
+    with file_lock():
+        projects = load_projects()
+        orig_count = len(projects)
 
-    # 指定IDを除外した新しいリストを作成
-    new_projects = [p for p in projects if p.get("id") != project_id]
+        # 対象 ID を除外
+        new_projects = [p for p in projects if p.get("id") != project_id]
 
-    # 元データが1件だけだった場合は空リストを許可
-    allow_empty = (orig_count == 1)
+        # 空リストになる場合は allow_empty=True で保存
+        allow_empty = (orig_count == 1)
+        save_all_projects(new_projects, allow_empty=allow_empty)
 
-    # 保存処理（allow_empty=Trueなら空リストでもロールバックしない）
-    save_all_projects(new_projects, allow_empty=allow_empty)
-
-    # 最後の1件を削除したときはバックアップファイルを削除して復元を防止
-    if allow_empty:
-        try:
-            os.remove(BACKUP_FILE)
-        except OSError:
-            pass
+        # 自動復元を防ぐため、意図的に空にしたときはバックアップを削除
+        if allow_empty and os.path.exists(BACKUP_FILE):
+            try:
+                os.remove(BACKUP_FILE)
+            except OSError as e:
+                # ログだけ残して続行
+                print(f"バックアップ削除失敗: {e}")
 
     return redirect(url_for("index"))
 
