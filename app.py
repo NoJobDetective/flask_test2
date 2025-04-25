@@ -11,6 +11,7 @@ from urllib.parse import urlparse                   # URL解析用
 import fcntl                 # ★ ファイルロック用
 from contextlib import contextmanager
 import tempfile              # ★ 一時ファイル作成用
+from typing import List, Optional
 
 # ── 基本設定 ───────────────────────────────────────
 JST = timezone(timedelta(hours=9))
@@ -18,15 +19,15 @@ app = Flask(__name__)
 app.secret_key = "mysecretkey"           # 適宜変更してください
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECTS_FILE = os.path.join(BASE_DIR, "projects.json")
-LOCK_FILE = PROJECTS_FILE + ".lock"      # ★ ロックファイル
+BACKUP_FILE   = PROJECTS_FILE + ".bak"
+LOCK_FILE     = PROJECTS_FILE + ".lock"      # ★ ロックファイル
 
-# ── ロック用コンテキストマネージャ ─────────────────
+# ────────────────────────────────────────────────
+#  ロック用コンテキストマネージャ
+# ────────────────────────────────────────────────
 @contextmanager
 def file_lock():
-    """
-    他プロセスと排他になるよう LOCK_EX を取得。
-    with file_lock(): ブロック内で排他制御が働く。
-    """
+    """with file_lock(): ブロック内で排他制御が働く。"""
     os.makedirs(os.path.dirname(LOCK_FILE), exist_ok=True)
     with open(LOCK_FILE, "a") as lock_f:
         fcntl.flock(lock_f, fcntl.LOCK_EX)
@@ -35,10 +36,93 @@ def file_lock():
         finally:
             fcntl.flock(lock_f, fcntl.LOCK_UN)
 
-# ── メタデータ取得 ─────────────────────────────────
+# ────────────────────────────────────────────────
+#  低レベル I/O ユーティリティ
+# ────────────────────────────────────────────────
+def _atomic_write_json(path: str, data: List[dict]) -> None:
+    """一時ファイルへ書き込み後、fsync → os.replace で原子的に置換"""
+    tmp_fd, tmp_path = tempfile.mkstemp(prefix="projects_", suffix=".json",
+                                        dir=os.path.dirname(path))
+    with os.fdopen(tmp_fd, "w", encoding="utf-8") as tmp_f:
+        json.dump(data, tmp_f, ensure_ascii=False, indent=2)
+        tmp_f.flush()
+        os.fsync(tmp_f.fileno())
+    os.replace(tmp_path, path)
+
+def _restore_from_backup() -> Optional[List[dict]]:
+    """
+    backup が存在し、かつ中身が空でなければ projects.json に戻す。
+    復元成功時はリストを返す。失敗時は None。
+    """
+    if not os.path.exists(BACKUP_FILE):
+        return None
+    try:
+        with open(BACKUP_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        if data:      # 空バックアップは無視
+            _atomic_write_json(PROJECTS_FILE, data)
+            return data
+    except Exception:
+        pass
+    return None
+
+# ────────────────────────────────────────────────
+#  JSON 読み込み／保存
+# ────────────────────────────────────────────────
+def load_projects() -> List[dict]:
+    """
+    projects.json を読み込む。存在しない場合や壊れている場合は
+    空リストを返すが、「空リストかつバックアップあり」のときは
+    バックアップから自動復元する。
+    """
+    if not os.path.exists(PROJECTS_FILE):
+        return []
+    with file_lock():
+        try:
+            with open(PROJECTS_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except Exception:
+            # 読み込み失敗 → バックアップ復元を試みる
+            restored = _restore_from_backup()
+            return restored if restored is not None else []
+
+        if not data:
+            restored = _restore_from_backup()
+            return restored if restored is not None else []
+        return data
+
+def save_all_projects(projects: List[dict], *, allow_empty: bool = False) -> None:
+    """
+    projects を保存。保存前に現在のファイルを BACKUP_FILE へコピーしておく。
+    allow_empty=False のとき、保存結果が空リストならバックアップからロールバック。
+    """
+    with file_lock():
+        # 現状をバックアップ
+        if os.path.exists(PROJECTS_FILE):
+            try:
+                os.replace(PROJECTS_FILE, BACKUP_FILE)
+            except Exception as e:
+                print(f"バックアップ作成失敗: {e}")
+
+        try:
+            _atomic_write_json(PROJECTS_FILE, projects)
+        except IOError as e:
+            print(f"保存エラー: {e}")
+            # 書き込み失敗 → バックアップ復元
+            _restore_from_backup()
+            return
+
+        # 意図せぬ空ファイルなら復元
+        if not projects and not allow_empty:
+            print("空リストを検知したためバックアップから復元")
+            _restore_from_backup()
+
+# ────────────────────────────────────────────────
+#  メタデータ取得（省略なし）
+# ────────────────────────────────────────────────
 def get_metadata(url):
     try:
-        response = requests.get(url)
+        response = requests.get(url, timeout=5)
         if response.status_code == 403:
             parsed = urlparse(url)
             domain = parsed.netloc.lstrip("www.")
@@ -63,22 +147,20 @@ def get_metadata(url):
 
     soup = BeautifulSoup(response.text, 'html.parser')
 
-    # title
     title_tag = soup.find('meta', property='og:title') or soup.find('title')
-    title = title_tag.get('content') if title_tag and title_tag.has_attr('content') \
-        else (title_tag.string.strip() if title_tag else "タイトルが見つかりませんでした")
+    title = (title_tag.get('content') if title_tag and title_tag.has_attr('content')
+             else (title_tag.string.strip() if title_tag else "タイトルが見つかりませんでした"))
 
-    # description
-    desc_tag = soup.find('meta', property='og:description') or soup.find('meta', attrs={'name': 'description'})
+    desc_tag = soup.find('meta', property='og:description') \
+        or soup.find('meta', attrs={'name': 'description'})
     description = desc_tag.get('content') if desc_tag and desc_tag.has_attr('content') \
         else "説明が見つかりませんでした"
 
-    # image
     image_tag = soup.find('meta', property='og:image')
     if image_tag and image_tag.get('content'):
         image_url = image_tag.get('content')
         try:
-            img_response = requests.get(image_url)
+            img_response = requests.get(image_url, timeout=5)
             img_response.raise_for_status()
             mime_type = img_response.headers.get("Content-Type", "image/jpeg")
             image_data = base64.b64encode(img_response.content).decode('utf-8')
@@ -96,39 +178,9 @@ def get_metadata(url):
         "url": url
     }
 
-# ── JSON 読み書き（ロック & 原子置換） ───────────────
-def load_projects():
-    """
-    projects.json を読み込む。ファイルが存在しない場合は空リスト。
-    ロックを取得したうえで読み込み、Race Condition を回避。
-    """
-    if not os.path.exists(PROJECTS_FILE):
-        return []
-    with file_lock():
-        try:
-            with open(PROJECTS_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            return []
-
-def save_all_projects(projects):
-    """
-    projects を一時ファイルへ書き込み、fsync してから os.replace で原子的に置換。
-    書き込み中はロックを保持し、並行アクセスによる上書きを防止。
-    """
-    with file_lock():
-        try:
-            tmp_fd, tmp_path = tempfile.mkstemp(prefix="projects_", suffix=".json",
-                                                dir=os.path.dirname(PROJECTS_FILE))
-            with os.fdopen(tmp_fd, "w", encoding="utf-8") as tmp_f:
-                json.dump(projects, tmp_f, ensure_ascii=False, indent=2)
-                tmp_f.flush()
-                os.fsync(tmp_f.fileno())          # ディスクへ確実に書き出す
-            os.replace(tmp_path, PROJECTS_FILE)    # 原子的に置換
-        except IOError as e:
-            print(f"保存エラー: {e}")
-
-# ── Jinja フィルタ ────────────────────────────────
+# ────────────────────────────────────────────────
+#  Jinja フィルタ
+# ────────────────────────────────────────────────
 def render_stars(rating):
     try:
         r = float(rating)
@@ -143,7 +195,9 @@ def markdown_filter(text):
     return markdown.markdown(text, extensions=['nl2br'])
 app.jinja_env.filters['markdown'] = markdown_filter
 
-# ── ルーティング ─────────────────────────────────
+# ────────────────────────────────────────────────
+#  ルーティング
+# ────────────────────────────────────────────────
 @app.route("/", methods=["GET", "POST"])
 def index():
     tag_filter = request.args.get("tag")
@@ -151,14 +205,14 @@ def index():
     if request.method == "POST":
         url_input = request.form.get("url", "").strip()
         comment = re.sub(r'\n+', '\n', request.form.get("comment", ""))
-        rating = float(request.form.get("rating", "5") or 5)
-        tags = [t.strip() for t in request.form.get("tags", "").split(",") if t.strip()][:5]
+        rating  = float(request.form.get("rating", "5") or 5)
+        tags    = [t.strip() for t in request.form.get("tags", "").split(",") if t.strip()][:5]
 
-        metadata = get_metadata(url_input) if url_input else {
-            "error403": False, "title": "", "description": "", "image": None, "url": ""}
+        metadata = get_metadata(url_input) if url_input else \
+            {"error403": False, "title": "", "description": "", "image": None, "url": ""}
 
         projects = load_projects()
-        new_id = max((p.get("id", 0) for p in projects), default=0) + 1
+        new_id   = max((p.get("id", 0) for p in projects), default=0) + 1
         projects.append({
             "id": new_id,
             "url": url_input,
@@ -192,15 +246,15 @@ def admin_logout():
 @app.route("/edit/<int:project_id>", methods=["GET", "POST"])
 def edit(project_id):
     projects = load_projects()
-    project = next((p for p in projects if p.get("id") == project_id), None)
+    project  = next((p for p in projects if p.get("id") == project_id), None)
     if not project:
         return "プロジェクトが見つかりません", 404
 
     if request.method == "POST":
-        new_url = request.form.get("url", "").strip()
+        new_url     = request.form.get("url", "").strip()
         new_comment = re.sub(r'\n+', '\n', request.form.get("comment", ""))
-        new_rating = float(request.form.get("rating", "5") or 5)
-        new_tags = [t.strip() for t in request.form.get("tags", "").split(",") if t.strip()][:5]
+        new_rating  = float(request.form.get("rating", "5") or 5)
+        new_tags    = [t.strip() for t in request.form.get("tags", "").split(",") if t.strip()][:5]
 
         metadata = get_metadata(new_url) if new_url else \
             {"error403": False, "title": "", "description": "", "image": None, "url": ""}
@@ -222,7 +276,7 @@ def edit(project_id):
 @app.route("/like/<int:project_id>", methods=["POST"])
 def like(project_id):
     projects = load_projects()
-    project = next((p for p in projects if p.get("id") == project_id), None)
+    project  = next((p for p in projects if p.get("id") == project_id), None)
     if not project:
         return jsonify({"error": "プロジェクトが見つかりません"}), 404
     project["likes"] = project.get("likes", 0) + 1
@@ -232,7 +286,7 @@ def like(project_id):
 @app.route("/unlike/<int:project_id>", methods=["POST"])
 def unlike(project_id):
     projects = load_projects()
-    project = next((p for p in projects if p.get("id") == project_id), None)
+    project  = next((p for p in projects if p.get("id") == project_id), None)
     if not project:
         return jsonify({"error": "プロジェクトが見つかりません"}), 404
     if project.get("likes", 0) > 0:
@@ -245,7 +299,8 @@ def delete(project_id):
     if not session.get("master"):
         return "削除権限がありません", 403
     projects = load_projects()
-    save_all_projects([p for p in projects if p.get("id") != project_id])
+    save_all_projects([p for p in projects if p.get("id") != project_id],
+                      allow_empty=True)     # ★ 意図的な空保存を許可
     return redirect(url_for("index"))
 
 # ── likes==0 のプロジェクト削除 ───────────────────
@@ -254,22 +309,24 @@ def cleanup_projects():
     if not os.path.exists(PROJECTS_FILE):
         return f'ERROR: {PROJECTS_FILE} が見つかりません', 500
 
-    with file_lock():                                # ★ ここでもロック
-        BACKUP_FILE = PROJECTS_FILE + '.bak'
+    with file_lock():
+        # 現行を退避
         os.replace(PROJECTS_FILE, BACKUP_FILE)
 
         try:
             with open(BACKUP_FILE, 'r', encoding='utf-8') as f:
                 projects = json.load(f)
         except Exception as e:
-            os.replace(BACKUP_FILE, PROJECTS_FILE)   # 読み込み失敗時に復旧
+            os.replace(BACKUP_FILE, PROJECTS_FILE)
             return f'バックアップ読み込みエラー: {e}', 500
 
         cleaned = [p for p in projects if p.get("likes", 0) != 0]
-        save_all_projects(cleaned)                   # save_all_projects 内で原子置換
+        save_all_projects(cleaned, allow_empty=True)
 
     return redirect(url_for("index"))
 
-# ── エントリーポイント ─────────────────────────────
+# ────────────────────────────────────────────────
+#  エントリーポイント
+# ────────────────────────────────────────────────
 if __name__ == "__main__":
     app.run(debug=True)
