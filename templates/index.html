@@ -300,7 +300,7 @@
   {% endif %}
   
   <div class="project-list">
-    <h2>過去の入力データ</h2>
+    <h2>{% if is_search %}検索結果一覧{% else %}過去の入力データ{% endif %}</h2>
     {% if projects %}
       {% for project in projects %}
         <div class="banner" id="banner{{ project.id }}" data-tags="{{ project.tags | join(',') }}">
@@ -316,65 +316,32 @@
                 </div>
                 <div class="top-middle">
                   <div class="title">{{ project.title }}</div>
-                  <div class="link">
-                    <a href="{{ project.url }}" target="_blank">{{ project.url }}</a>
-                  </div>
+                  <div class="link"><a href="{{ project.url }}" target="_blank">{{ project.url }}</a></div>
                 </div>
-                <div class="top-right">
-                  <div id="qrcode{{ project.id }}"></div>
-                </div>
+                <div class="top-right"><div id="qrcode{{ project.id }}"></div></div>
               </div>
             {% endif %}
-
-            <div class="middle-section">
-              <div class="comment-container">
-                {{ project.comment | markdown | safe }}
-              </div>
-            </div>
-
+            <div class="middle-section"><div class="comment-container">{{ project.comment | markdown | safe }}</div></div>
             <div class="bottom-section">
               <div class="reg-date">登録日: {{ project['登録日'] }}</div>
               <div class="rating-display">評価: {{ project.rating | render_stars }}</div>
-              <div class="like-section">
-                <button class="like-button" onclick="toggleLike({{ project.id }})">
-                  いいね {{ project.likes|default(0) }}
-                </button>
-              </div>
-              {% if session.get("master") %}
-              <div class="edit-link"><a href="{{ url_for('edit', project_id=project.id) }}">編集する</a></div>
-              <div class="delete-link"> <a href="{{ url_for('delete', project_id=project.id) }}" class="delete-button">×</a></div>
+              <div class="like-section"><button class="like-button" onclick="toggleLike({{ project.id }})">いいね {{ project.likes|default(0) }}</button></div>
+              {% if session.get('master') %}
+                <div class="edit-link"><a href="{{ url_for('edit', project_id=project.id) }}">編集する</a></div>
+                <div class="delete-link"><a href="{{ url_for('delete', project_id=project.id) }}" class="delete-button">×</a></div>
               {% else %}
-              <div class="print-link"><button class="print-button" onclick="printPreviewScaled(this)">
-                  印刷する
-                </button></div>
+                <div class="print-link"><button class="print-button" onclick="printPreviewScaled(this)">印刷する</button></div>
               {% endif %}
             </div>
-
-            {% if project.tags and project.tags|length > 0 %}
-              <div class="tags">
-                <div class="tag-label">タグ:</div>
-                <div class="tag-list">
-                  {% for tag in project.tags %}
-                    <span class="tag-box filter-tag" data-tag="{{ tag }}">{{ tag }}</span>
-                  {% endfor %}
-                </div>
-              </div>
+            {% if project.tags %}
+              <div class="tags"><div class="tag-label">タグ:</div><div class="tag-list">{% for tag in project.tags %}<span class="tag-box filter-tag" data-tag="{{ tag }}">{{ tag }}</span>{% endfor %}</div></div>
             {% endif %}
           </div>
         </div>
-        <script>
-          new QRCode(document.getElementById("qrcode{{ project.id }}"), {
-            text: "{{ project.url }}",
-            width: 128,
-            height: 128,
-            colorDark : "#000000",
-            colorLight : "#ffffff",
-            correctLevel : QRCode.CorrectLevel.H
-          });
-        </script>
+        <script>new QRCode(document.getElementById("qrcode{{ project.id }}"),{text:"{{ project.url }}",width:128,height:128,colorDark:"#000",colorLight:"#fff",correctLevel:QRCode.CorrectLevel.H});</script>
       {% endfor %}
     {% else %}
-      <p style="text-align:center;">入力されたデータはありません。</p>
+      <p style="text-align:center;">{% if is_search %}該当する結果はありませんでした{% else %}入力されたデータはありません{% endif %}。</p>
     {% endif %}
   </div>
 
