@@ -4,13 +4,13 @@ from bs4 import BeautifulSoup
 import json
 import os
 import base64
-import re                    # 改行コード統一用
-import markdown              # マークダウン変換用
-from datetime import datetime, timezone, timedelta  # 登録日の自動入力用
-from urllib.parse import urlparse                   # URL解析用
-import fcntl                 # ★ ファイルロック用
+import re
+import markdown
+from datetime import datetime, timezone, timedelta
+from urllib.parse import urlparse
+import fcntl
 from contextlib import contextmanager
-import tempfile              # ★ 一時ファイル作成用
+import tempfile
 from typing import List, Optional, Dict, Any
 
 # ── Elasticsearch 依存 ────────────────────────────────
@@ -22,18 +22,17 @@ es = Elasticsearch(hosts=["http://localhost:9200"])  # 適宜変更してくだ�
 # ── 基本設定 ───────────────────────────────────────
 JST = timezone(timedelta(hours=9))
 app = Flask(__name__)
-app.secret_key = "mysecretkey"           # 適宜変更してください
+app.secret_key = "mysecretkey"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECTS_FILE = os.path.join(BASE_DIR, "projects.json")
-BACKUP_FILE   = PROJECTS_FILE + ".bak"
-LOCK_FILE     = PROJECTS_FILE + ".lock"      # ★ ロックファイル
+BACKUP_FILE = PROJECTS_FILE + ".bak"
+LOCK_FILE = PROJECTS_FILE + ".lock"
 
 # ────────────────────────────────────────────────
-#  ロック用コンテキストマネージャ
+#  ファイルロック
 # ────────────────────────────────────────────────
 @contextmanager
 def file_lock():
-    """with file_lock(): ブロック内で排他制御が働く。"""
     os.makedirs(os.path.dirname(LOCK_FILE), exist_ok=True)
     with open(LOCK_FILE, "a") as lock_f:
         fcntl.flock(lock_f, fcntl.LOCK_EX)
@@ -43,44 +42,29 @@ def file_lock():
             fcntl.flock(lock_f, fcntl.LOCK_UN)
 
 # ────────────────────────────────────────────────
-#  低レベル I/O ユーティリティ
+#  JSON I/O
 # ────────────────────────────────────────────────
 def _atomic_write_json(path: str, data: List[dict]) -> None:
-    """一時ファイルへ書き込み後、fsync → os.replace で原子的に置換"""
-    tmp_fd, tmp_path = tempfile.mkstemp(prefix="projects_", suffix=".json",
-                                        dir=os.path.dirname(path))
+    tmp_fd, tmp_path = tempfile.mkstemp(prefix="projects_", suffix=".json", dir=os.path.dirname(path))
     with os.fdopen(tmp_fd, "w", encoding="utf-8") as tmp_f:
         json.dump(data, tmp_f, ensure_ascii=False, indent=2)
-        tmp_f.flush()
-        os.fsync(tmp_f.fileno())
+        tmp_f.flush(); os.fsync(tmp_f.fileno())
     os.replace(tmp_path, path)
 
 def _restore_from_backup() -> Optional[List[dict]]:
-    """
-    backup が存在し、かつ中身が空でなければ projects.json に戻す。
-    復元成功時はリストを返す。失敗時は None。
-    """
     if not os.path.exists(BACKUP_FILE):
         return None
     try:
         with open(BACKUP_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
-        if data:      # 空バックアップは無視
+        if data:
             _atomic_write_json(PROJECTS_FILE, data)
             return data
     except Exception:
         pass
     return None
 
-# ────────────────────────────────────────────────
-#  JSON 読み込み／保存
-# ────────────────────────────────────────────────
 def load_projects() -> List[dict]:
-    """
-    projects.json を読み込む。存在しない場合や壊れている場合は
-    空リストを返すが、「空リストかつバックアップあり」のときは
-    バックアップから自動復元する。
-    """
     if not os.path.exists(PROJECTS_FILE):
         return []
     with file_lock():
@@ -88,52 +72,34 @@ def load_projects() -> List[dict]:
             with open(PROJECTS_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
         except Exception:
-            # 読み込み失敗 → バックアップ復元を試みる
-            restored = _restore_from_backup()
-            return restored if restored is not None else []
-
+            restored = _restore_from_backup(); return restored or []
         if not data:
-            restored = _restore_from_backup()
-            return restored if restored is not None else []
+            restored = _restore_from_backup(); return restored or []
         return data
 
-def save_all_projects(projects: List[dict], *, allow_empty: bool = False) -> None:
-    """
-    projects を保存。保存前に現在のファイルを BACKUP_FILE へコピーしておく。
-    allow_empty=False のとき、保存結果が空リストならバックアップからロールバック。
-    """
+def save_all_projects(projects: List[dict], *, allow_empty: bool=False) -> None:
     with file_lock():
-        # 現状をバックアップ
         if os.path.exists(PROJECTS_FILE):
             try:
                 os.replace(PROJECTS_FILE, BACKUP_FILE)
             except Exception as e:
                 print(f"バックアップ作成失敗: {e}")
-
         try:
             _atomic_write_json(PROJECTS_FILE, projects)
         except IOError as e:
-            print(f"保存エラー: {e}")
-            # 書き込み失敗 → バックアップ復元
-            _restore_from_backup()
-            return
-
-        # 意図せぬ空ファイルなら復元
+            print(f"保存エラー: {e}"); _restore_from_backup(); return
         if not projects and not allow_empty:
-            print("空リストを検知したためバックアップから復元")
-            _restore_from_backup()
+            print("空リスト検知 → 復元"); _restore_from_backup()
 
 # ────────────────────────────────────────────────
 #  Elasticsearch 補助
 # ────────────────────────────────────────────────
 
 def _index_project_es(project: Dict[str, Any]):
-    """Elasticsearch へドキュメント登録/更新"""
     try:
         es.index(index=ES_INDEX, id=project["id"], document=project)
     except Exception as e:
         print(f"ES index error: {e}")
-
 
 def _delete_project_es(pid: int):
     try:
@@ -149,78 +115,40 @@ def get_metadata(url):
     try:
         response = requests.get(url, timeout=5)
         if response.status_code == 403:
-            parsed = urlparse(url)
-            domain = parsed.netloc.lstrip("www.")
-            return {
-                "error403": True,
-                "title": domain,
-                "description": "説明が見つかりませんでした",
-                "image": None,
-                "url": url
-            }
+            domain = urlparse(url).netloc.lstrip("www.")
+            return {"error403": True, "title": domain, "description": "説明が見つかりませんでした", "image": None, "url": url}
         response.raise_for_status()
     except Exception:
-        parsed = urlparse(url)
-        domain = parsed.netloc.lstrip("www.")
-        return {
-            "error403": True,
-            "title": domain,
-            "description": "説明が見つかりませんでした",
-            "image": None,
-            "url": url
-        }
+        domain = urlparse(url).netloc.lstrip("www.")
+        return {"error403": True, "title": domain, "description": "説明が見つかりませんでした", "image": None, "url": url}
 
-    soup = BeautifulSoup(response.text, 'html.parser')
-
+    soup = BeautifulSoup(response.text, "html.parser")
     title_tag = soup.find('meta', property='og:title') or soup.find('title')
-    title = (title_tag.get('content') if title_tag and title_tag.has_attr('content')
-             else (title_tag.string.strip() if title_tag else "タイトルが見つかりませんでした"))
-
-    desc_tag = soup.find('meta', property='og:description') \
-        or soup.find('meta', attrs={'name': 'description'})
-    description = desc_tag.get('content') if desc_tag and desc_tag.has_attr('content') \
-        else "説明が見つかりませんでした"
-
+    title = (title_tag.get('content') if title_tag and title_tag.has_attr('content') else (title_tag.string.strip() if title_tag else "タイトルが見つかりませんでした"))
+    desc_tag = soup.find('meta', property='og:description') or soup.find('meta', attrs={'name': 'description'})
+    description = desc_tag.get('content') if desc_tag and desc_tag.has_attr('content') else "説明が見つかりませんでした"
     image_tag = soup.find('meta', property='og:image')
     if image_tag and image_tag.get('content'):
-        image_url = image_tag.get('content')
         try:
-            img_response = requests.get(image_url, timeout=5)
-            img_response.raise_for_status()
-            mime_type = img_response.headers.get("Content-Type", "image/jpeg")
-            image_data = base64.b64encode(img_response.content).decode('utf-8')
-            image_data = f"data:{mime_type};base64,{image_data}"
+            img_r = requests.get(image_tag['content'], timeout=5); img_r.raise_for_status()
+            mime = img_r.headers.get("Content-Type", "image/jpeg")
+            image_data = f"data:{mime};base64," + base64.b64encode(img_r.content).decode()
         except Exception:
             image_data = None
     else:
         image_data = None
-
-    return {
-        "error403": False,
-        "title": title,
-        "description": description,
-        "image": image_data,
-        "url": url
-    }
+    return {"error403": False, "title": title, "description": description, "image": image_data, "url": url}
 
 # ────────────────────────────────────────────────
 #  Jinja フィルタ
 # ────────────────────────────────────────────────
 
 def render_stars(rating):
-    try:
-        r = float(rating)
-    except Exception:
-        r = 0.0
-    full = int(r)
-    empty = 10 - full
-    return "★" * full + "☆" * empty
+    try: r = float(rating)
+    except: r = 0.0
+    return "★"*int(r)+"☆"*(10-int(r))
 app.jinja_env.filters['render_stars'] = render_stars
-
-
-def markdown_filter(text):
-    return markdown.markdown(text, extensions=['nl2br'])
-app.jinja_env.filters['markdown'] = markdown_filter
+app.jinja_env.filters['markdown'] = lambda text: markdown.markdown(text, extensions=['nl2br'])
 
 # ────────────────────────────────────────────────
 #  ルーティング
