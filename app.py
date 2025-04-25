@@ -16,7 +16,7 @@ from typing import List, Optional, Dict, Any
 # ── Elasticsearch 依存 ────────────────────────────────
 from elasticsearch import Elasticsearch
 
-ES_INDEX = "projects"  # インデックス名
+ES_INDEX = "l8cci2G2qepihVtGhD3o"  # インデックス名
 es = Elasticsearch(hosts=["http://localhost:9200"])  # 適宜変更してください
 
 # ── 基本設定 ───────────────────────────────────────
