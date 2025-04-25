@@ -11,7 +11,13 @@ from urllib.parse import urlparse                   # URL解析用
 import fcntl                 # ★ ファイルロック用
 from contextlib import contextmanager
 import tempfile              # ★ 一時ファイル作成用
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
+
+# ── Elasticsearch 依存 ────────────────────────────────
+from elasticsearch import Elasticsearch
+
+ES_INDEX = "projects"  # インデックス名
+es = Elasticsearch(hosts=["http://localhost:9200"])  # 適宜変更してください
 
 # ── 基本設定 ───────────────────────────────────────
 JST = timezone(timedelta(hours=9))
@@ -118,8 +124,27 @@ def save_all_projects(projects: List[dict], *, allow_empty: bool = False) -> Non
             _restore_from_backup()
 
 # ────────────────────────────────────────────────
-#  メタデータ取得（省略なし）
+#  Elasticsearch 補助
 # ────────────────────────────────────────────────
+
+def _index_project_es(project: Dict[str, Any]):
+    """Elasticsearch へドキュメント登録/更新"""
+    try:
+        es.index(index=ES_INDEX, id=project["id"], document=project)
+    except Exception as e:
+        print(f"ES index error: {e}")
+
+
+def _delete_project_es(pid: int):
+    try:
+        es.delete(index=ES_INDEX, id=pid, ignore=[404])
+    except Exception as e:
+        print(f"ES delete error: {e}")
+
+# ────────────────────────────────────────────────
+#  メタデータ取得
+# ────────────────────────────────────────────────
+
 def get_metadata(url):
     try:
         response = requests.get(url, timeout=5)
@@ -181,6 +206,7 @@ def get_metadata(url):
 # ────────────────────────────────────────────────
 #  Jinja フィルタ
 # ────────────────────────────────────────────────
+
 def render_stars(rating):
     try:
         r = float(rating)
@@ -190,6 +216,7 @@ def render_stars(rating):
     empty = 10 - full
     return "★" * full + "☆" * empty
 app.jinja_env.filters['render_stars'] = render_stars
+
 
 def markdown_filter(text):
     return markdown.markdown(text, extensions=['nl2br'])
@@ -207,13 +234,14 @@ def index():
         comment = re.sub(r'\n+', '\n', request.form.get("comment", ""))
         rating  = float(request.form.get("rating", "5") or 5)
         tags    = [t.strip() for t in request.form.get("tags", "").split(",") if t.strip()][:5]
+        author  = session.get("username", "guest")
 
         metadata = get_metadata(url_input) if url_input else \
             {"error403": False, "title": "", "description": "", "image": None, "url": ""}
 
         projects = load_projects()
         new_id   = max((p.get("id", 0) for p in projects), default=0) + 1
-        projects.append({
+        project_obj = {
             "id": new_id,
             "url": url_input,
             "comment": comment,
@@ -223,9 +251,12 @@ def index():
             "rating": rating,
             "likes": 0,
             "tags": tags,
+            "author": author,
             "登録日": datetime.now(JST).strftime("%Y-%m-%d")
-        })
+        }
+        projects.append(project_obj)
         save_all_projects(projects)
+        _index_project_es(project_obj)
         return redirect(url_for("index"))
 
     projects = sorted(load_projects(), key=lambda p: float(p.get('rating', 0)), reverse=True)
@@ -233,6 +264,57 @@ def index():
         projects = [p for p in projects if tag_filter in p.get("tags", [])]
     return render_template("index.html", projects=projects, tag_filter=tag_filter)
 
+# ────────────────────────────────────────────────
+#  高度検索 & 絞り込み
+# ────────────────────────────────────────────────
+@app.route("/search")
+def search():
+    query      = request.args.get("q", "")
+    tag        = request.args.get("tag")
+    author     = request.args.get("author")
+    date_from  = request.args.get("date_from")  # YYYY-MM-DD
+    date_to    = request.args.get("date_to")
+    rating_min = request.args.get("rating_min", type=float)
+    rating_max = request.args.get("rating_max", type=float)
+
+    es_query: Dict[str, Any] = {"bool": {"must": [], "filter": []}}
+
+    if query:
+        es_query["bool"]["must"].append({"multi_match": {"query": query, "fields": ["title^3", "comment", "description", "url"]}})
+    else:
+        es_query["bool"]["must"].append({"match_all": {}})
+
+    if tag:
+        es_query["bool"]["filter"].append({"term": {"tags.keyword": tag}})
+    if author:
+        es_query["bool"]["filter"].append({"term": {"author.keyword": author}})
+    if date_from or date_to:
+        range_filter: Dict[str, Any] = {}
+        if date_from:
+            range_filter["gte"] = date_from
+        if date_to:
+            range_filter["lte"] = date_to
+        es_query["bool"]["filter"].append({"range": {"登録日": range_filter}})
+    if rating_min is not None or rating_max is not None:
+        range_rating: Dict[str, Any] = {}
+        if rating_min is not None:
+            range_rating["gte"] = rating_min
+        if rating_max is not None:
+            range_rating["lte"] = rating_max
+        es_query["bool"]["filter"].append({"range": {"rating": range_rating}})
+
+    try:
+        res = es.search(index=ES_INDEX, query=es_query, size=100)
+        ids = [int(hit["_id"]) for hit in res["hits"]["hits"]]
+    except Exception as e:
+        print(f"ES search error: {e}")
+        ids = []
+
+    # JSON ファイルにもまだ残っているか確認し、順序を ES のヒット順で整列
+    projects_dict = {p["id"]: p for p in load_projects()}
+    projects = [projects_dict[i] for i in ids if i in projects_dict]
+
+    return render_template("search.html", projects=projects, query=query)
 @app.route("/admin-login")
 def admin_login():
     session.update(authenticated=True, master=True)
@@ -293,8 +375,8 @@ def unlike(project_id):
         project["likes"] -= 1
     save_all_projects(projects)
     return jsonify({"likes": project["likes"]})
-    @app.route("/delete/<int:project_id>", methods=["GET", "POST"])
     
+@app.route("/delete/<int:project_id>", methods=["GET", "POST"])    
 def delete(project_id):
     """
     指定 ID のプロジェクトを削除する。
