@@ -293,18 +293,34 @@ def unlike(project_id):
         project["likes"] -= 1
     save_all_projects(projects)
     return jsonify({"likes": project["likes"]})
-
 @app.route("/delete/<int:project_id>")
 def delete(project_id):
+    # 管理者権限チェック
     if not session.get("master"):
         return "削除権限がありません", 403
-    # 元データ件数を取得して意図的な空リストか判定
+
+    # 現在のプロジェクト一覧を読み込み
     projects = load_projects()
     orig_count = len(projects)
+
+    # 指定IDを除外した新しいリストを作成
     new_projects = [p for p in projects if p.get("id") != project_id]
+
+    # 元データが1件だけだった場合は空リストを許可
     allow_empty = (orig_count == 1)
+
+    # 保存処理（allow_empty=Trueなら空リストでもロールバックしない）
     save_all_projects(new_projects, allow_empty=allow_empty)
+
+    # 最後の1件を削除したときはバックアップファイルを削除して復元を防止
+    if allow_empty:
+        try:
+            os.remove(BACKUP_FILE)
+        except OSError:
+            pass
+
     return redirect(url_for("index"))
+
 
 # ── likes==0 のプロジェクト削除 ───────────────────
 @app.route("/d")
