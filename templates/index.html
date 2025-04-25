@@ -226,7 +226,11 @@
     <div style="text-align: center; margin-bottom: 10px;">
       <a href="{{ url_for('admin_logout') }}">一般ユーザ権限で閲覧する</a>
     </div
-    <!-- ────── 検索フォーム ────── -->
+  {% else %}
+    <div style="text-align: center; margin-bottom: 10px;">
+      <a href="{{ url_for('admin_login') }}">管理者権限でログイン</a>
+    </div>
+
     <form action="{{ url_for('search') }}" method="get" class="search-form" style="margin:20px auto;max-width:800px;">
       <fieldset style="border:1px solid #ccc;padding:10px;">
         <legend>全文検索 / 絞り込み</legend>
@@ -257,12 +261,6 @@
         <button type="reset"  style="padding:6px 12px;">リセット</button>
       </fieldset>
     </form>
-    <!-- ────── /検索フォーム ────── -->
-
-  {% else %}
-    <div style="text-align: center; margin-bottom: 10px;">
-      <a href="{{ url_for('admin_login') }}">管理者権限でログイン</a>
-    </div>
   {% endif %}
 
   <!-- フィルター解除ボタン -->
