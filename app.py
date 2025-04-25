@@ -225,96 +225,53 @@ app.jinja_env.filters['markdown'] = markdown_filter
 # ────────────────────────────────────────────────
 #  ルーティング
 # ────────────────────────────────────────────────
-@app.route("/", methods=["GET", "POST"])
+@app.route('/', methods=['GET','POST'])
 def index():
-    tag_filter = request.args.get("tag")
+    tag_filter = request.args.get('tag')
+    if request.method == 'POST':
+        url_input = request.form.get('url','').strip()
+        comment = re.sub(r'\n+','\n', request.form.get('comment',''))
+        rating  = float(request.form.get('rating','5') or 5)
+        tags    = [t.strip() for t in request.form.get('tags','').split(',') if t.strip()][:5]
+        author  = session.get('username','guest')
+        meta    = get_metadata(url_input) if url_input else {"error403":False,"title":"","description":"","image":None,"url":""}
+        projects = load_projects(); new_id = max((p.get('id',0) for p in projects), default=0)+1
+        proj = {"id":new_id,"url":url_input,"comment":comment,"title":meta['title'],"image":meta['image'],"error403":meta['error403'],"rating":rating,"likes":0,"tags":tags,"author":author,"登録日":datetime.now(JST).strftime('%Y-%m-%d')}
+        projects.append(proj); save_all_projects(projects); _index_project_es(proj)
+        return redirect(url_for('index'))
+    projects = sorted(load_projects(), key=lambda p:float(p.get('rating',0)), reverse=True)
+    if tag_filter: projects = [p for p in projects if tag_filter in p.get('tags',[])]
+    return render_template('index.html', projects=projects, tag_filter=tag_filter, is_search=False, query="")
 
-    if request.method == "POST":
-        url_input = request.form.get("url", "").strip()
-        comment = re.sub(r'\n+', '\n', request.form.get("comment", ""))
-        rating  = float(request.form.get("rating", "5") or 5)
-        tags    = [t.strip() for t in request.form.get("tags", "").split(",") if t.strip()][:5]
-        author  = session.get("username", "guest")
-
-        metadata = get_metadata(url_input) if url_input else \
-            {"error403": False, "title": "", "description": "", "image": None, "url": ""}
-
-        projects = load_projects()
-        new_id   = max((p.get("id", 0) for p in projects), default=0) + 1
-        project_obj = {
-            "id": new_id,
-            "url": url_input,
-            "comment": comment,
-            "title": metadata.get("title", ""),
-            "image": metadata.get("image"),
-            "error403": metadata.get("error403", False),
-            "rating": rating,
-            "likes": 0,
-            "tags": tags,
-            "author": author,
-            "登録日": datetime.now(JST).strftime("%Y-%m-%d")
-        }
-        projects.append(project_obj)
-        save_all_projects(projects)
-        _index_project_es(project_obj)
-        return redirect(url_for("index"))
-
-    projects = sorted(load_projects(), key=lambda p: float(p.get('rating', 0)), reverse=True)
-    if tag_filter:
-        projects = [p for p in projects if tag_filter in p.get("tags", [])]
-    return render_template("index.html", projects=projects, tag_filter=tag_filter, is_search=False, query="")
-
-# ────────────────────────────────────────────────
-#  高度検索 & 絞り込み
-# ────────────────────────────────────────────────
-@app.route("/search")
+# ────────────────── 検索 ─────────────────────────
+@app.route('/search')
 def search():
-    query      = request.args.get("q", "")
-    tag        = request.args.get("tag")
-    author     = request.args.get("author")
-    date_from  = request.args.get("date_from")  # YYYY-MM-DD
-    date_to    = request.args.get("date_to")
-    rating_min = request.args.get("rating_min", type=float)
-    rating_max = request.args.get("rating_max", type=float)
+    query = request.args.get('q',''); tag = request.args.get('tag'); author = request.args.get('author');
+    date_from = request.args.get('date_from'); date_to = request.args.get('date_to');
+    rating_min = request.args.get('rating_min', type=float); rating_max = request.args.get('rating_max', type=float)
 
-    es_query: Dict[str, Any] = {"bool": {"must": [], "filter": []}}
-
-    if query:
-        es_query["bool"]["must"].append({"multi_match": {"query": query, "fields": ["title^3", "comment", "description", "url"]}})
-    else:
-        es_query["bool"]["must"].append({"match_all": {}})
-
-    if tag:
-        es_query["bool"]["filter"].append({"term": {"tags.keyword": tag}})
-    if author:
-        es_query["bool"]["filter"].append({"term": {"author.keyword": author}})
+    es_q = {"bool":{"must":[],"filter":[]}}
+    es_q['bool']['must'].append({"multi_match":{"query":query if query else "*","fields":["title^3","comment","description","url"]}}) if query else es_q['bool']['must'].append({"match_all":{}})
+    if tag: es_q['bool']['filter'].append({"term":{"tags.keyword":tag}})
+    if author: es_q['bool']['filter'].append({"term":{"author.keyword":author}})
     if date_from or date_to:
-        range_filter: Dict[str, Any] = {}
-        if date_from:
-            range_filter["gte"] = date_from
-        if date_to:
-            range_filter["lte"] = date_to
-        es_query["bool"]["filter"].append({"range": {"登録日": range_filter}})
+        rng = {}; 
+        if date_from: rng['gte']=date_from
+        if date_to: rng['lte']=date_to
+        es_q['bool']['filter'].append({"range":{"登録日":rng}})
     if rating_min is not None or rating_max is not None:
-        range_rating: Dict[str, Any] = {}
-        if rating_min is not None:
-            range_rating["gte"] = rating_min
-        if rating_max is not None:
-            range_rating["lte"] = rating_max
-        es_query["bool"]["filter"].append({"range": {"rating": range_rating}})
-
+        rng = {}
+        if rating_min is not None: rng['gte']=rating_min
+        if rating_max is not None: rng['lte']=rating_max
+        es_q['bool']['filter'].append({"range":{"rating":rng}})
     try:
-        res = es.search(index=ES_INDEX, query=es_query, size=100)
-        ids = [int(hit["_id"]) for hit in res["hits"]["hits"]]
+        resp = es.search(index=ES_INDEX, query=es_q, size=100)
+        ids = [int(h['_id']) for h in resp['hits']['hits']]
     except Exception as e:
-        print(f"ES search error: {e}")
-        ids = []
-
-    # JSON ファイルにもまだ残っているか確認し、順序を ES のヒット順で整列
-    projects_dict = {p["id"]: p for p in load_projects()}
-    projects = [projects_dict[i] for i in ids if i in projects_dict]
-
-    return render_template("index.html", projects=projects, is_search=True, query=query)
+        print(f"ES search error: {e}"); ids=[]
+    proj_dict = {p['id']:p for p in load_projects()}
+    projects = [proj_dict[i] for i in ids if i in proj_dict]
+    return render_template('index.html', projects=projects, is_search=True, query=query)
 
 @app.route("/admin-login")
 def admin_login():
