@@ -11,211 +11,231 @@
   <!-- html2canvas と jsPDF の読み込み -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<style>
-  * { font-family: "UD Font", sans-serif; }
-  body {
-    margin: 0;
-    padding: 10px;
-    font-family: "UD Font", sans-serif; 
-  }
-  h1, h2 {
-    text-align: center;
-  }
+<style>/* 全体のフォント設定 */
+* {
+  font-family: "UD Font", sans-serif;
+}
 
-  /* 入力フォームのスタイル */
-  form {
-    margin-bottom: 30px;
-    max-width: 600px;
-    margin-left: auto;
-    margin-right: auto;
-  }
-  form input[type="text"],
-  form textarea {
-    width: 100%;
-    padding: 8px;
-    box-sizing: border-box;
-    font-size: 1rem;
-  }
+/* ボディの余白設定 */
+body {
+  margin: 0;
+  padding: 10px;
+  font-family: "UD Font", sans-serif;
+}
 
-  /* タグ入力フィールドのスタイル */
-  .tags-input {
-    width: 100%;
-    padding: 8px;
-    box-sizing: border-box;
-    font-size: 1rem;
-    margin-bottom: 10px;
-  }
+/* 見出しの中央寄せ */
+h1, h2 {
+  text-align: center;
+}
 
-  /* 星マーク採点のスタイル（10点満点） */
-  .star-rating {
-    direction: rtl;
-    display: inline-block;
-    font-size: 2rem;
-  }
-  .star-rating input[type="radio"] {
-    display: none;
-  }
-  .star-rating label {
-    color: #ccc;
-    cursor: pointer;
-  }
-  .star-rating input[type="radio"]:checked ~ label,
-  .star-rating label:hover,
-  .star-rating label:hover ~ label {
-    color: gold;
-  }
+/* 入力フォーム */
+form {
+  margin-bottom: 30px;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+form input[type="text"],
+form textarea {
+  width: 100%;
+  padding: 8px;
+  box-sizing: border-box;
+  font-size: 1rem;
+}
 
-  /* マークダウン変換後の段落余白をリセット */
-  .comment-container p {
-    margin: 0 0 8px;
-  }
-  /* コメント内のリンクを折り返しつつ目立たせる */
-  .comment-container a {
-    color: #007BFF;
-    text-decoration: underline;
-    word-break: break-all;
-  }
+/* タグ入力フィールド */
+.tags-input {
+  width: 100%;
+  padding: 8px;
+  box-sizing: border-box;
+  font-size: 1rem;
+  margin-bottom: 10px;
+}
 
-  /* バナー全体のスタイル */
-  .banner {
-    border: 1px solid #ccc;
-    padding: 10px;
-    margin-bottom: 15px;
-    max-width: 800px;
-    margin-left: auto;
-    margin-right: auto;
-  }
-  /* 内側の印刷対象DIV：borderを含まない */
-  .printable-content {
-    border: none;
-  }
+/* 星マーク評価（10点満点） */
+.star-rating {
+  direction: rtl;
+  display: inline-block;
+  font-size: 2rem;
+}
+.star-rating input[type="radio"] {
+  display: none;
+}
+.star-rating label {
+  color: #ccc;
+  cursor: pointer;
+}
+.star-rating input[type="radio"]:checked ~ label,
+.star-rating label:hover,
+.star-rating label:hover ~ label {
+  color: gold;
+}
 
-  /* 上部セクション：各要素間に余白を追加 */
+/* コメント表示部分 */
+.comment-container {
+  transition: max-height 0.3s ease;
+  max-height: none !important;
+  overflow: visible !important;
+  /* 長い文字列でも折り返す */
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  /* 連続した文字列でも適切に折り返す */
+  word-break: break-all;
+}
+
+/* コメント内リンク */
+.comment-container p {
+  margin: 0 0 8px;
+}
+.comment-container a {
+  color: #007BFF;
+  text-decoration: underline;
+  word-break: break-all;
+}
+
+/* バナー全体 */
+.banner {
+  border: 1px solid #ccc;
+  padding: 10px;
+  margin-bottom: 15px;
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* 印刷対象DIV（borderなし） */
+.printable-content {
+  border: none;
+}
+
+/* 上部レイアウト */
+.top-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.top-left {
+  flex: 0 0 150px;
+}
+.top-left img {
+  width: 150px;
+}
+.top-middle {
+  flex: 1;
+  text-align: left;
+}
+.top-right {
+  flex: 0 0 150px;
+  text-align: center;
+}
+.link a {
+  word-break: break-all;
+}
+
+/* 中央セクション */
+.middle-section {
+  text-align: left;
+  margin-bottom: 10px;
+}
+
+/* 各種ボタン */
+.toggle-comment,
+.print-preview-btn,
+.print-preview-scaled-btn {
+  display: inline-block;
+  margin-top: 5px;
+  padding: 4px 8px;
+  background-color: #007BFF;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.toggle-comment:hover,
+.print-preview-btn:hover,
+.print-preview-scaled-btn:hover {
+  background-color: #0056b3;
+}
+
+/* 下部セクション */
+.bottom-section {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9em;
+}
+.bottom-section > div {
+  margin: 5px 0;
+}
+.reg-date {
+  font-weight: bold;
+}
+
+/* タグボックス */
+.tag-box {
+  display: inline-block;
+  border: 1px solid #ccc;
+  padding: 2px 4px;
+  border-radius: 4px;
+  margin-right: 4px;
+  margin-bottom: 4px;
+  cursor: pointer;
+}
+
+/* フィルター解除ボタン */
+#clear-filter {
+  display: none;
+  margin: 10px auto;
+  padding: 6px 12px;
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+#clear-filter:hover {
+  background-color: #c82333;
+}
+
+/* アクションボタン共通 */
+.delete-button,
+.like-button,
+.print-button,
+.edit-link a {
+  display: inline-block;
+  border: 1px solid #ccc;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 1.2rem;
+  cursor: pointer;
+  background-color: white;
+  color: #333;
+  text-decoration: none;
+  margin-right: 4px;
+}
+.delete-button:hover,
+.like-button:hover,
+.print-button:hover,
+.edit-link a:hover {
+  background-color: #f8f8f8;
+}
+
+/* レスポンシブ対応 */
+@media screen and (max-width: 600px) {
   .top-section {
-    display: flex;
-    justify-content: space-between;
+    flex-direction: column;
     align-items: center;
-    gap: 10px;
-    margin-bottom: 10px;
   }
-  .top-left {
-    flex: 0 0 150px;
-  }
-  .top-left img {
-    width: 150px;
-  }
-  .top-middle {
-    flex: 1;
-    text-align: left;
-  }
-  .top-right {
-    flex: 0 0 150px;
+  .bottom-section {
+    flex-direction: column;
     text-align: center;
   }
-  /* URLリンクの折り返し */
-  .link a {
-    word-break: break-all;
-  }
+}
 
-  /* 中央セクション：感想 */
-  .middle-section {
-    text-align: left;
-    margin-bottom: 10px;
-  }
-  /* コメントエリア（開閉対象） */
-  .comment-container {
-    transition: max-height 0.3s ease;
-    max-height: none !important;
-    overflow: visible !important;
-  }
-  .toggle-comment, .print-preview-btn, .print-preview-scaled-btn {
-    display: inline-block;
-    margin-top: 5px;
-    padding: 4px 8px;
-    background-color: #007BFF;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-  }
-  .toggle-comment:hover, .print-preview-btn:hover, .print-preview-scaled-btn:hover {
-    background-color: #0056b3;
-  }
-
-  /* 下部セクション */
-  .bottom-section {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 0.9em;
-  }
-  .bottom-section > div {
-    margin: 5px 0;
-  }
-  /* 登録日表示 */
-  .reg-date {
-    font-weight: bold;
-  }
-  /* タグボックスのスタイル */
-  .tag-box {
-    display: inline-block;
-    border: 1px solid #ccc;
-    padding: 2px 4px;
-    border-radius: 4px;
-    margin-right: 4px;
-    margin-bottom: 4px;
-    cursor: pointer;
-  }
-  /* フィルター解除ボタン */
-  #clear-filter {
-    display: none;
-    margin: 10px auto;
-    padding: 6px 12px;
-    background-color: #dc3545;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-  }
-  #clear-filter:hover {
-    background-color: #c82333;
-  }
-
-  /* 統一レイアウトのアクションボタン */
-  .delete-button,
-  .like-button,
-  .print-button,
-  .edit-link a {
-    display: inline-block;
-    border: 1px solid #ccc;
-    padding: 6px 12px;
-    border-radius: 4px;
-    font-size: 1.2rem;
-    cursor: pointer;
-    background-color: white;
-    color: #333;
-    text-decoration: none;
-    margin-right: 4px;
-  }
-  .delete-button:hover,
-  .like-button:hover,
-  .print-button:hover,
-  .edit-link a:hover {
-    background-color: #f8f8f8;
-  }
-
-  /* レスポンシブ対応 */
-  @media screen and (max-width: 600px) {
-    .top-section {
-      flex-direction: column;
-      align-items: center;
-    }
-    .bottom-section {
-      flex-direction: column;
-      text-align: center;
-    }
-  }
 </style>
 </head>
 <body>
