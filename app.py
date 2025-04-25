@@ -314,7 +314,7 @@ def search():
     projects_dict = {p["id"]: p for p in load_projects()}
     projects = [projects_dict[i] for i in ids if i in projects_dict]
 
-    return render_template("search.html", projects=projects, query=query)
+    return render_template("index.html", projects=projects, query=query)
 @app.route("/admin-login")
 def admin_login():
     session.update(authenticated=True, master=True)
