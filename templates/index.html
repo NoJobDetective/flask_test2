@@ -225,7 +225,40 @@
   {% if session.get("master") %}
     <div style="text-align: center; margin-bottom: 10px;">
       <a href="{{ url_for('admin_logout') }}">一般ユーザ権限で閲覧する</a>
-    </div>
+    </div
+    <!-- ────── 検索フォーム ────── -->
+    <form action="{{ url_for('search') }}" method="get" class="search-form" style="margin:20px auto;max-width:800px;">
+      <fieldset style="border:1px solid #ccc;padding:10px;">
+        <legend>全文検索 / 絞り込み</legend>
+    
+        <!-- キーワード -->
+        <label for="q">キーワード:</label>
+        <input type="text" id="q" name="q" placeholder="タイトル・コメントを検索" style="width:100%;padding:6px;"><br><br>
+    
+        <!-- タグ -->
+        <label for="tag">タグ:</label>
+        <input type="text" id="tag" name="tag" placeholder="例: Flask"><br><br>
+    
+        <!-- 著者 -->
+        <label for="author">投稿者:</label>
+        <input type="text" id="author" name="author" placeholder="username"><br><br>
+    
+        <!-- 日付範囲 -->
+        <label>登録日:</label>
+        <input type="date" name="date_from"> 〜 
+        <input type="date" name="date_to"><br><br>
+    
+        <!-- 評価範囲 -->
+        <label>評価:</label>
+        <input type="number" name="rating_min" min="0" max="10" step="0.1" placeholder="min" style="width:80px;"> 〜 
+        <input type="number" name="rating_max" min="0" max="10" step="0.1" placeholder="max" style="width:80px;"><br><br>
+    
+        <button type="submit" style="padding:6px 12px;">検索</button>
+        <button type="reset"  style="padding:6px 12px;">リセット</button>
+      </fieldset>
+    </form>
+    <!-- ────── /検索フォーム ────── -->
+
   {% else %}
     <div style="text-align: center; margin-bottom: 10px;">
       <a href="{{ url_for('admin_login') }}">管理者権限でログイン</a>
