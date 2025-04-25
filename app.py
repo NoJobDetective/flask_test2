@@ -298,9 +298,12 @@ def unlike(project_id):
 def delete(project_id):
     if not session.get("master"):
         return "削除権限がありません", 403
+    # 元データ件数を取得して意図的な空リストか判定
     projects = load_projects()
-    save_all_projects([p for p in projects if p.get("id") != project_id],
-                      allow_empty=True)     # ★ 意図的な空保存を許可
+    orig_count = len(projects)
+    new_projects = [p for p in projects if p.get("id") != project_id]
+    allow_empty = (orig_count == 1)
+    save_all_projects(new_projects, allow_empty=allow_empty)
     return redirect(url_for("index"))
 
 # ── likes==0 のプロジェクト削除 ───────────────────
