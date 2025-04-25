@@ -376,36 +376,16 @@ def unlike(project_id):
     save_all_projects(projects)
     return jsonify({"likes": project["likes"]})
     
-@app.route("/delete/<int:project_id>", methods=["GET", "POST"])    
+@app.route("/delete/<int:project_id>")
 def delete(project_id):
-    """
-    指定 ID のプロジェクトを削除する。
-    ・管理者セッション（master）が必須
-    ・残り 1 件を削除する場合は意図的な空リストとして扱い、
-      バックアップを破棄して self-restore を防ぐ
-    """
     if not session.get("master"):
         return "削除権限がありません", 403
-
-    with file_lock():
-        projects = load_projects()
-        orig_count = len(projects)
-
-        # 対象 ID を除外
-        new_projects = [p for p in projects if p.get("id") != project_id]
-
-        # 空リストになる場合は allow_empty=True で保存
-        allow_empty = (orig_count == 1)
-        save_all_projects(new_projects, allow_empty=allow_empty)
-
-        # 自動復元を防ぐため、意図的に空にしたときはバックアップを削除
-        if allow_empty and os.path.exists(BACKUP_FILE):
-            try:
-                os.remove(BACKUP_FILE)
-            except OSError as e:
-                # ログだけ残して続行
-                print(f"バックアップ削除失敗: {e}")
-
+    # 元データ件数を取得して意図的な空リストか判定
+    projects = load_projects()
+    orig_count = len(projects)
+    new_projects = [p for p in projects if p.get("id") != project_id]
+    allow_empty = (orig_count == 1)
+    save_all_projects(new_projects, allow_empty=allow_empty)
     return redirect(url_for("index"))
 
 
