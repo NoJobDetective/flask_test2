@@ -293,6 +293,7 @@ def unlike(project_id):
         project["likes"] -= 1
     save_all_projects(projects)
     return jsonify({"likes": project["likes"]})
+    
 @app.route("/delete/<int:project_id>")
 def delete(project_id):
     # 管理者権限チェック
