@@ -150,7 +150,7 @@ def render_stars(rating):
 app.jinja_env.filters['render_stars'] = render_stars
 app.jinja_env.filters['markdown'] = lambda text: markdown.markdown(
     text,
-    extensions=['fenced_code', 'codehilite'],  # ← これが重要！
+    extensions=['fenced_code', 'codehilite', 'nl2br'],
     output_format='html5'
 )
 # ────────────────────────────────────────────────
