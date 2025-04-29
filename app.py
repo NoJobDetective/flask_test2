@@ -148,7 +148,7 @@ def render_stars(rating):
     except: r = 0.0
     return "★"*int(r)+"☆"*(10-int(r))
 app.jinja_env.filters['render_stars'] = render_stars
-app.jinja_env.filters['markdown'] = lambda text: markdown(
+app.jinja_env.filters['markdown'] = lambda text: markdown.markdown(
     text,
     extensions=['fenced_code', 'codehilite'],  # ← これが重要！
     output_format='html5'
