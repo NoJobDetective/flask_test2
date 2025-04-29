@@ -140,26 +140,52 @@ def get_metadata(url):
     return {"error403": False, "title": title, "description": description, "image": image_data, "url": url}
 
 # ────────────────────────────────────────────────
-#  Jinja フィルタ
+#  Jinja
 # ────────────────────────────────────────────────
 
+def normalize_code_blocks(text):
+    import re
+    # コードブロックを検出して処理
+    pattern = r'```(.*?)\n(.*?)```'
+    def fix_indentation(match):
+        lang = match.group(1).strip()
+        code = match.group(2)
+        # 行頭の余分な空白を削除
+        lines = [line.rstrip() for line in code.split('\n')]
+        return f'```{lang}\n{"\n".join(lines)}\n```'
+    
+    return re.sub(pattern, fix_indentation, text, flags=re.DOTALL)
+
+# フィルター内で使用
+def markdown_filter(text):
+    return markdown.markdown(
+        text,
+        extensions=[
+            'markdown.extensions.fenced_code',  # コードフェンスを処理
+            'markdown.extensions.codehilite',   # コードハイライト
+            'markdown.extensions.tables',
+            'markdown.extensions.sane_lists',
+            'markdown.extensions.nl2br',        # nl2brを最後に配置
+        ],
+        extension_configs={
+            'markdown.extensions.codehilite': {
+                'linenums': False,
+                'css_class': 'codehilite',
+                'guess_lang': True
+            },
+            'markdown.extensions.fenced_code': {
+                'lang_prefix': 'language-'
+            }
+        },
+        output_format='html5'
+    )
+    
 def render_stars(rating):
     try: r = float(rating)
     except: r = 0.0
     return "★"*int(r)+"☆"*(10-int(r))
 app.jinja_env.filters['render_stars'] = render_stars
-app.jinja_env.filters['markdown'] = lambda text: markdown.markdown(
-    text,
-    # 完全修飾名で列挙
-    extensions=[
-        'markdown.extensions.fenced_code',
-        'markdown.extensions.codehilite',
-        'markdown.extensions.nl2br',
-        'markdown.extensions.tables',
-        'markdown.extensions.sane_lists',
-    ],
-    output_format='html5'
-)
+app.jinja_env.filters['markdown'] = markdown_filter
 # ────────────────────────────────────────────────
 #  ルーティング
 # ────────────────────────────────────────────────
