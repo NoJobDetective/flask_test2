@@ -156,8 +156,8 @@ def normalize_code_blocks(text):
     
     return re.sub(pattern, fix_indentation, text, flags=re.DOTALL)
 
-# フィルター内で使用
 def markdown_filter(text):
+    text = normalize_code_blocks(text)
     return markdown.markdown(
         text,
         extensions=[
