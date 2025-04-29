@@ -150,7 +150,20 @@ def render_stars(rating):
 app.jinja_env.filters['render_stars'] = render_stars
 app.jinja_env.filters['markdown'] = lambda text: markdown.markdown(
     text,
-    extensions=['fenced_code', 'codehilite', 'nl2br'],
+    # 完全修飾名で列挙
+    extensions=[
+        'markdown.extensions.fenced_code',
+        'markdown.extensions.codehilite',
+        'markdown.extensions.nl2br',
+        'markdown.extensions.tables',
+        'markdown.extensions.sane_lists',
+    ],
+    # nl2br の挙動を強化
+    extension_configs={
+        'markdown.extensions.nl2br': {
+            'hard_wrap': True
+        }
+    },
     output_format='html5'
 )
 # ────────────────────────────────────────────────
