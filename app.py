@@ -158,12 +158,6 @@ app.jinja_env.filters['markdown'] = lambda text: markdown.markdown(
         'markdown.extensions.tables',
         'markdown.extensions.sane_lists',
     ],
-    # nl2br の挙動を強化
-    extension_configs={
-        'markdown.extensions.nl2br': {
-            'hard_wrap': True
-        }
-    },
     output_format='html5'
 )
 # ────────────────────────────────────────────────
