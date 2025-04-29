@@ -205,20 +205,32 @@
   .edit-link a:hover {
     background-color: #f8f8f8;
   }
+  {{ get_pygments_css()|safe }}
+  
+  /* コードブロック用の追加スタイル */
   .codehilite {
-    padding: 0.5em;
-    margin: 1em 0;
-    overflow-x: auto;
-    background-color: #f8f8f8;
-    border-radius: 3px;
+      padding: 0.5em;
+      margin: 1em 0;
+      overflow-x: auto;
+      background-color: #f8f8f8;
+      border-radius: 3px;
+      border: 1px solid #ddd;
   }
   
   .codehilite pre {
-    margin: 0;
-    white-space: pre;
-    word-break: keep-all;
-    word-wrap: normal;
-    line-height: 1.5;
+      margin: 0;
+      white-space: pre;
+      word-break: keep-all;
+      word-wrap: normal;
+      line-height: 1.5;
+  }
+  
+  /* インラインコード用のスタイル */
+  code {
+      padding: 0.2em 0.4em;
+      background-color: rgba(27, 31, 35, 0.05);
+      border-radius: 3px;
+      font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
   }
   /* レスポンシブ対応 */
   @media screen and (max-width: 600px) {
