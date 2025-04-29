@@ -12,6 +12,7 @@ import fcntl
 from contextlib import contextmanager
 import tempfile
 from typing import List, Optional, Dict, Any
+from pygments.formatters import HtmlFormatter
 
 # ── Elasticsearch 依存 ────────────────────────────────
 from elasticsearch import Elasticsearch
@@ -157,15 +158,16 @@ def normalize_code_blocks(text):
     return re.sub(pattern, fix_indentation, text, flags=re.DOTALL)
 
 def markdown_filter(text):
-    text = normalize_code_blocks(text)
+    # HTMLタグをエスケープせずに通す設定
     return markdown.markdown(
         text,
         extensions=[
-            'markdown.extensions.fenced_code',  # コードフェンスを処理
+            'markdown.extensions.fenced_code',  # コードフェンス対応 (```code```)
             'markdown.extensions.codehilite',   # コードハイライト
             'markdown.extensions.tables',
             'markdown.extensions.sane_lists',
-            'markdown.extensions.nl2br',        # nl2brを最後に配置
+            # nl2brは最後に配置（コードブロック内での改行を保持する）
+            'markdown.extensions.nl2br',
         ],
         extension_configs={
             'markdown.extensions.codehilite': {
@@ -179,16 +181,34 @@ def markdown_filter(text):
         },
         output_format='html5'
     )
+
+# フィルターを登録
+app.jinja_env.filters['markdown'] = markdown_filter
     
 def render_stars(rating):
     try: r = float(rating)
     except: r = 0.0
     return "★"*int(r)+"☆"*(10-int(r))
 app.jinja_env.filters['render_stars'] = render_stars
-app.jinja_env.filters['markdown'] = markdown_filter
 # ────────────────────────────────────────────────
 #  ルーティング
 # ────────────────────────────────────────────────
+
+# Pygmentsスタイルシートを生成するためのルート
+@app.route('/pygments.css')
+def pygments_css():
+    formatter = HtmlFormatter(style='default')
+    css = formatter.get_style_defs('.codehilite')
+    return css, 200, {'Content-Type': 'text/css'}
+
+# アプリケーションのコンテキストプロセッサに追加
+@app.context_processor
+def inject_pygments_css():
+    def get_pygments_css():
+        formatter = HtmlFormatter(style='default')
+        return formatter.get_style_defs('.codehilite')
+    return dict(get_pygments_css=get_pygments_css)
+
 @app.route('/', methods=['GET','POST'])
 def index():
     tag_filter = request.args.get('tag')
