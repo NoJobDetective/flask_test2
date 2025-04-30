@@ -151,19 +151,20 @@ def normalize_code_blocks(text: str) -> str:
     言語指定フェンスを保持したまま出力を整形します。
     """
 
-    # フェンス付きコードブロック全体をキャプチャ
-    pattern = r'```(\w*)\n([\s\S]*?)```'
+    # フェンス付きコードブロックを検出（言語指定あり・なし両対応）
+    pattern = r'```([^\n`]*)\n([\s\S]*?)```'
 
     def fix_indentation(match: re.Match) -> str:
-        lang = match.group(1)      # 言語指定（例: 'python', ''）
-        code = match.group(2)      # コード本体
+        lang = match.group(1)  # 言語指定（例: 'dart' や ''）
+        code = match.group(2)
         # 共通インデントを除去
-        dedented = textwrap.dedent(code).strip('\n')
-        # 再構築
+        dedented = textwrap.dedent(code).strip("\n")
+        # フェンスを再構築
         return f'```{lang}\n{dedented}\n```'
 
-    # 全コードブロックに適用
+    # DOTALL フラグで改行も含めマッチ
     return re.sub(pattern, fix_indentation, text, flags=re.DOTALL)
+
 
 def markdown_filter(text):
     """
