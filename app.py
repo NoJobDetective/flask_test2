@@ -145,32 +145,34 @@ def get_metadata(url):
 # ────────────────────────────────────────────────
 
 def normalize_code_blocks(text):
-    # ```lang\n ... ``` を安定して検出
-    pattern = re.compile(r'```(\w*)\n([\s\S]*?)```', re.MULTILINE)
+    """
+    テキスト中のMarkdownコードブロック（```lang ... ```）について、
+    ・フェンスの言語指定を保持しつつ正しくマッチ
+    ・各行の共通最小インデントを除去
+    ・フェンス前後の不要改行をトリミング
+    """
+    # フェンス付きコードブロックを検出
+    pattern = re.compile(r'```(\w*)\n(.*?)\n```', re.DOTALL)
 
-    def fix(match):
-        lang = match.group(1)                  # 言語部分（空文字の場合もある）
-        code = match.group(2)                  # フェンス内のコード
-        lines = code.split('\n')
+    def _dedent_block(match):
+        lang = match.group(1)
+        code = match.group(2).splitlines()
 
-        # 空行を除いて最小インデントを計算
+        # 各行の先頭スペース数を測り、非空行の最小値を取得
         indents = [
-            len(re.match(r'^\s*', line).group())
-            for line in lines if line.strip()
+            len(re.match(r'^[ \t]*', line).group(0))
+            for line in code if line.strip()
         ]
         min_indent = min(indents) if indents else 0
 
-        # インデントと末尾スペースを除去
-        new_lines = [
-            line[min_indent:].rstrip()
-            for line in lines
-        ]
+        # 各行から共通インデントを除去
+        dedented = [line[min_indent:] for line in code]
+        cleaned = "\n".join(dedented).rstrip()
 
-        # フェンスを含めて再構築
-        return f'```{lang}\n' + '\n'.join(new_lines) + '\n```'
+        return f'```{lang}\n{cleaned}\n```'
 
-    # 全てのコードブロックに対して置換を実行
-    return pattern.sub(fix, text)
+    # 置換適用
+    return pattern.sub(_dedent_block, text)
 
 def markdown_filter(text):
     """
