@@ -158,7 +158,7 @@ def normalize_code_blocks(text):
     return re.sub(pattern, fix_indentation, text, flags=re.DOTALL)
 
 def markdown_filter(text):
-    # HTMLタグをエスケープせずに通す設定
+    text = normalize_code_blocks(text)
     return markdown.markdown(
         text,
         extensions=[
