@@ -211,74 +211,9 @@ def markdown_filter(text):
         },
         output_format='html5'                    # HTML5形式で出力
     )
-
-# マークダウンの前処理を行う関数（HTMLタグを適切に処理）
-def preprocess_markdown(text):
-    """
-    マークダウンテキストの前処理を行う
-    - すでにHTMLタグが含まれる場合の処理
-    - コードブロックの正規化
-    """
-    import re
     
-    # すでにHTMLに変換されている部分を検出し保護
-    html_parts = {}
-    html_counter = 0
-    
-    # divやpreタグなどのHTMLブロックを検出して一時的に置き換え
-    def replace_html_parts(match):
-        nonlocal html_counter
-        placeholder = f"__HTML_PLACEHOLDER_{html_counter}__"
-        html_parts[placeholder] = match.group(0)
-        html_counter += 1
-        return placeholder
-    
-    # HTML要素を一時的に置き換え
-    processed_text = re.sub(r'<div.*?>.*?</div>|<pre.*?>.*?</pre>', replace_html_parts, text, flags=re.DOTALL)
-    
-    # コードブロックを正規化
-    processed_text = normalize_code_blocks(processed_text)
-    
-    # 保護したHTML部分を元に戻す
-    for placeholder, html in html_parts.items():
-        processed_text = processed_text.replace(placeholder, html)
-    
-    return processed_text
-
-# 改良されたマークダウンフィルター
-def enhanced_markdown_filter(text):
-    """
-    HTMLタグの保護とコードブロックの正規化を含む改良版マークダウンフィルター
-    """
-    # マークダウンの前処理
-    preprocessed_text = preprocess_markdown(text)
-    
-    # マークダウンをHTMLに変換
-    return markdown.markdown(
-        preprocessed_text,
-        extensions=[
-            'markdown.extensions.fenced_code',
-            'markdown.extensions.codehilite',
-            'markdown.extensions.tables',
-            'markdown.extensions.sane_lists',
-            'markdown.extensions.nl2br',
-        ],
-        extension_configs={
-            'markdown.extensions.codehilite': {
-                'linenums': False,
-                'css_class': 'codehilite',
-                'guess_lang': True,
-                'use_pygments': True
-            },
-            'markdown.extensions.fenced_code': {
-                'lang_prefix': 'language-'
-            }
-        },
-        output_format='html5'
-    )
-
 # Flaskアプリケーションにフィルターを登録
-app.jinja_env.filters['markdown'] = enhanced_markdown_filter
+app.jinja_env.filters['markdown'] = markdown_filter
     
 def render_stars(rating):
     try: r = float(rating)
