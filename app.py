@@ -145,35 +145,130 @@ def get_metadata(url):
 # ────────────────────────────────────────────────
 
 def normalize_code_blocks(text):
+    """
+    マークダウン内のコードブロックを正規化する関数
+    - 複数のコードブロックを適切に処理
+    - バックティック記号の誤検出を防止
+    - コードブロック内の改行を保持
+    """
     import re
-    # コードブロックを検出して処理
+    
+    # すでにHTMLタグが含まれているかチェック
+    if re.search(r'<div class="codehilite"><pre>', text):
+        # すでに変換済みの場合は処理をスキップ
+        return text
+    
+    # マークダウンのコードブロックを検出するパターン
+    # より厳密なパターンマッチングを行う
     pattern = r'```(.*?)\n(.*?)```'
-    def fix_indentation(match):
+    
+    def process_code_block(match):
+        # 言語指定の取得と正規化
         lang = match.group(1).strip()
         code = match.group(2)
-        # 行頭の余分な空白を削除
+        
+        # 行の処理（余分な末尾空白を削除、インデントは保持）
         lines = [line.rstrip() for line in code.split('\n')]
-        return f'```{lang}\n{"\n".join(lines)}\n```'
+        
+        # 空行を適切に処理
+        clean_code = "\n".join(lines)
+        
+        # 適切なフォーマットで返す
+        return f'```{lang}\n{clean_code}\n```'
     
-    return re.sub(pattern, fix_indentation, text, flags=re.DOTALL)
+    # すべてのコードブロックを処理
+    processed_text = re.sub(pattern, process_code_block, text, flags=re.DOTALL)
+    
+    return processed_text
 
 def markdown_filter(text):
-    text = normalize_code_blocks(text)
+    """
+    マークダウンをHTMLに変換するフィルター
+    """
+    # コードブロックを正規化
+    normalized_text = normalize_code_blocks(text)
+    
+    # マークダウンをHTMLに変換
     return markdown.markdown(
-        text,
+        normalized_text,
         extensions=[
-            'markdown.extensions.fenced_code',  # コードフェンス対応 (```code```)
+            'markdown.extensions.fenced_code',  # コードフェンスのサポート
             'markdown.extensions.codehilite',   # コードハイライト
+            'markdown.extensions.tables',       # テーブルのサポート
+            'markdown.extensions.sane_lists',   # リストの適切な処理
+            'markdown.extensions.nl2br',        # 改行の処理（最後に配置）
+        ],
+        extension_configs={
+            'markdown.extensions.codehilite': {
+                'linenums': False,               # 行番号表示なし
+                'css_class': 'codehilite',       # CSSクラス名
+                'guess_lang': True,              # 言語自動推測
+                'use_pygments': True             # Pygmentsを使用
+            },
+            'markdown.extensions.fenced_code': {
+                'lang_prefix': 'language-'       # 言語指定プレフィックス
+            }
+        },
+        output_format='html5'                    # HTML5形式で出力
+    )
+
+# マークダウンの前処理を行う関数（HTMLタグを適切に処理）
+def preprocess_markdown(text):
+    """
+    マークダウンテキストの前処理を行う
+    - すでにHTMLタグが含まれる場合の処理
+    - コードブロックの正規化
+    """
+    import re
+    
+    # すでにHTMLに変換されている部分を検出し保護
+    html_parts = {}
+    html_counter = 0
+    
+    # divやpreタグなどのHTMLブロックを検出して一時的に置き換え
+    def replace_html_parts(match):
+        nonlocal html_counter
+        placeholder = f"__HTML_PLACEHOLDER_{html_counter}__"
+        html_parts[placeholder] = match.group(0)
+        html_counter += 1
+        return placeholder
+    
+    # HTML要素を一時的に置き換え
+    processed_text = re.sub(r'<div.*?>.*?</div>|<pre.*?>.*?</pre>', replace_html_parts, text, flags=re.DOTALL)
+    
+    # コードブロックを正規化
+    processed_text = normalize_code_blocks(processed_text)
+    
+    # 保護したHTML部分を元に戻す
+    for placeholder, html in html_parts.items():
+        processed_text = processed_text.replace(placeholder, html)
+    
+    return processed_text
+
+# 改良されたマークダウンフィルター
+def enhanced_markdown_filter(text):
+    """
+    HTMLタグの保護とコードブロックの正規化を含む改良版マークダウンフィルター
+    """
+    # マークダウンの前処理
+    preprocessed_text = preprocess_markdown(text)
+    
+    # マークダウンをHTMLに変換
+    return markdown.markdown(
+        preprocessed_text,
+        extensions=[
+            'markdown.extensions.fenced_code',
+            'markdown.extensions.codehilite',
             'markdown.extensions.tables',
             'markdown.extensions.sane_lists',
-            # nl2brは最後に配置（コードブロック内での改行を保持する）
             'markdown.extensions.nl2br',
         ],
         extension_configs={
             'markdown.extensions.codehilite': {
                 'linenums': False,
                 'css_class': 'codehilite',
-                'guess_lang': True
+                'guess_lang': True,
+                'use_pygments': True
             },
             'markdown.extensions.fenced_code': {
                 'lang_prefix': 'language-'
@@ -182,8 +277,8 @@ def markdown_filter(text):
         output_format='html5'
     )
 
-# フィルターを登録
-app.jinja_env.filters['markdown'] = markdown_filter
+# Flaskアプリケーションにフィルターを登録
+app.jinja_env.filters['markdown'] = enhanced_markdown_filter
     
 def render_stars(rating):
     try: r = float(rating)
