@@ -149,22 +149,28 @@ def normalize_code_blocks(text: str) -> str:
     """
     Markdown のコードブロック内の共通インデントを除去し、
     言語指定フェンスを保持したまま出力を整形します。
+    短いコードスニペットやインデントのないコードにも対応します。
     """
-
     # フェンス付きコードブロックを検出（言語指定あり・なし両対応）
     pattern = r'```([^\n`]*)\n([\s\S]*?)```'
 
     def fix_indentation(match: re.Match) -> str:
-        lang = match.group(1)  # 言語指定（例: 'dart' や ''）
+        lang = match.group(1).strip()  # 言語指定（例: 'dart' や ''）をトリム
         code = match.group(2)
-        # 共通インデントを除去
-        dedented = textwrap.dedent(code).strip("\n")
-        # フェンスを再構築
-        return f'```{lang}\n{dedented}\n```'
+        
+        if code.strip():  # コードが空でない場合のみ処理
+            # 共通インデントを除去
+            dedented = textwrap.dedent(code)
+            # 前後の改行を削除
+            dedented = dedented.strip("\n")
+            # フェンスを再構築
+            return f'```{lang}\n{dedented}\n```'
+        else:
+            # コードが空の場合はそのまま返す
+            return f'```{lang}\n```'
 
     # DOTALL フラグで改行も含めマッチ
     return re.sub(pattern, fix_indentation, text, flags=re.DOTALL)
-
 
 def markdown_filter(text):
     """
