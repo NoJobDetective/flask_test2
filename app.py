@@ -5,6 +5,7 @@ import json
 import os
 import base64
 import re
+import textwrap
 import markdown
 from datetime import datetime, timezone, timedelta
 from urllib.parse import urlparse
@@ -144,35 +145,25 @@ def get_metadata(url):
 #  Jinja
 # ────────────────────────────────────────────────
 
-def normalize_code_blocks(text):
+def normalize_code_blocks(text: str) -> str:
     """
-    テキスト中のMarkdownコードブロック（```lang ... ```）について、
-    ・フェンスの言語指定を保持しつつ正しくマッチ
-    ・各行の共通最小インデントを除去
-    ・フェンス前後の不要改行をトリミング
+    Markdown のコードブロック内の共通インデントを除去し、
+    言語指定フェンスを保持したまま出力を整形します。
     """
-    # フェンス付きコードブロックを検出
-    pattern = re.compile(r'```(\w*)\n(.*?)\n```', re.DOTALL)
 
-    def _dedent_block(match):
-        lang = match.group(1)
-        code = match.group(2).splitlines()
+    # フェンス付きコードブロック全体をキャプチャ
+    pattern = r'```(\w*)\n([\s\S]*?)```'
 
-        # 各行の先頭スペース数を測り、非空行の最小値を取得
-        indents = [
-            len(re.match(r'^[ \t]*', line).group(0))
-            for line in code if line.strip()
-        ]
-        min_indent = min(indents) if indents else 0
+    def fix_indentation(match: re.Match) -> str:
+        lang = match.group(1)      # 言語指定（例: 'python', ''）
+        code = match.group(2)      # コード本体
+        # 共通インデントを除去
+        dedented = textwrap.dedent(code).strip('\n')
+        # 再構築
+        return f'```{lang}\n{dedented}\n```'
 
-        # 各行から共通インデントを除去
-        dedented = [line[min_indent:] for line in code]
-        cleaned = "\n".join(dedented).rstrip()
-
-        return f'```{lang}\n{cleaned}\n```'
-
-    # 置換適用
-    return pattern.sub(_dedent_block, text)
+    # 全コードブロックに適用
+    return re.sub(pattern, fix_indentation, text, flags=re.DOTALL)
 
 def markdown_filter(text):
     """
