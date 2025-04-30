@@ -149,59 +149,67 @@ def normalize_code_blocks(text: str) -> str:
     """
     Markdown のコードブロック内の共通インデントを除去し、
     言語指定フェンスを保持したまま出力を整形します。
-    短いコードスニペットやインデントのないコードにも対応します。
+    コードブロック全体のインデントは除去されます。
     """
     # フェンス付きコードブロックを検出（言語指定あり・なし両対応）
-    pattern = r'```([^\n`]*)\n([\s\S]*?)```'
+    # 行頭のインデントもキャプチャし、終了フェンス前のインデントも許容する正規表現
+    # re.MULTILINE フラグと組み合わせることで ^ が各行頭にマッチする
+    pattern = r'(^[ \t]*)```([^\n`]*)\n([\s\S]*?)\n[ \t]*```'
 
     def fix_indentation(match: re.Match) -> str:
-        lang = match.group(1).strip()  # 言語指定（例: 'dart' や ''）をトリム
-        code = match.group(2)
-        
-        if code.strip():  # コードが空でない場合のみ処理
-            # 共通インデントを除去
-            dedented = textwrap.dedent(code)
-            # 前後の改行を削除
-            dedented = dedented.strip("\n")
-            # フェンスを再構築
-            return f'```{lang}\n{dedented}\n```'
-        else:
-            # コードが空の場合はそのまま返す
-            return f'```{lang}\n```'
+        # group(1) は行頭のインデントですが、除去するため使いません。
+        lang = match.group(2).strip()  # 言語指定を取得し、前後の空白を除去
+        code = match.group(3)          # コードブロックの内容を取得
 
-    # DOTALL フラグで改行も含めマッチ
-    return re.sub(pattern, fix_indentation, text, flags=re.DOTALL)
+        # コード部分が空白文字のみで構成されているかチェック
+        if not code.strip():
+             # コードが空または空白のみの場合は、空文字列として扱う
+             dedented_code = ""
+        else:
+            # textwrap.dedent を使用して、コードブロック内の共通インデントを除去
+            dedented_code = textwrap.dedent(code)
+            # dedent によって先頭や末尾に不要な改行が残る場合があるので除去
+            dedented_code = dedented_code.strip('\n')
+
+        # フェンスを再構築。行頭インデントは含めずに整形する。
+        return f'```{lang}\n{dedented_code}\n```'
+
+    # re.sub を使用して、見つかった全てのコードブロックを fix_indentation で処理
+    # re.MULTILINE: ^ が各行頭にマッチするようにする
+    # re.DOTALL: . (ドット) が改行文字にもマッチするようにする
+    return re.sub(pattern, fix_indentation, text, flags=re.MULTILINE | re.DOTALL)
 
 def markdown_filter(text):
     """
     マークダウンをHTMLに変換するフィルター
     """
-    # コードブロックを正規化
+    # コードブロックを正規化（インデント問題を修正）
     normalized_text = normalize_code_blocks(text)
-    
+
     # マークダウンをHTMLに変換
-    return markdown.markdown(
+    html = markdown.markdown(
         normalized_text,
         extensions=[
             'markdown.extensions.fenced_code',  # コードフェンスのサポート
             'markdown.extensions.codehilite',   # コードハイライト
             'markdown.extensions.tables',       # テーブルのサポート
             'markdown.extensions.sane_lists',   # リストの適切な処理
-            'markdown.extensions.nl2br',        # 改行の処理（最後に配置）
+            'markdown.extensions.nl2br',        # 改行を<br>に変換（最後に適用推奨）
         ],
         extension_configs={
             'markdown.extensions.codehilite': {
                 'linenums': False,               # 行番号表示なし
                 'css_class': 'codehilite',       # CSSクラス名
                 'guess_lang': True,              # 言語自動推測
-                'use_pygments': True             # Pygmentsを使用
+                'use_pygments': True             # Pygments（コードハイライトライブラリ）を使用
             },
             'markdown.extensions.fenced_code': {
-                'lang_prefix': 'language-'       # 言語指定プレフィックス
+                'lang_prefix': 'language-'       # HTMLクラス名のプレフィックス (例: class="language-python")
             }
         },
         output_format='html5'                    # HTML5形式で出力
     )
+    return html
     
 # Flaskアプリケーションにフィルターを登録
 app.jinja_env.filters['markdown'] = markdown_filter
