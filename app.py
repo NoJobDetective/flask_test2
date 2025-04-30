@@ -145,41 +145,32 @@ def get_metadata(url):
 # ────────────────────────────────────────────────
 
 def normalize_code_blocks(text):
-    """
-    マークダウン内のコードブロックを正規化する関数
-    - 複数のコードブロックを適切に処理
-    - バックティック記号の誤検出を防止
-    - コードブロック内の改行を保持
-    """
-    import re
-    
-    # すでにHTMLタグが含まれているかチェック
-    if re.search(r'<div class="codehilite"><pre>', text):
-        # すでに変換済みの場合は処理をスキップ
-        return text
-    
-    # マークダウンのコードブロックを検出するパターン
-    # より厳密なパターンマッチングを行う
-    pattern = r'```(.*?)\n(.*?)```'
-    
-    def process_code_block(match):
-        # 言語指定の取得と正規化
-        lang = match.group(1).strip()
-        code = match.group(2)
-        
-        # 行の処理（余分な末尾空白を削除、インデントは保持）
-        lines = [line.rstrip() for line in code.split('\n')]
-        
-        # 空行を適切に処理
-        clean_code = "\n".join(lines)
-        
-        # 適切なフォーマットで返す
-        return f'```{lang}\n{clean_code}\n```'
-    
-    # すべてのコードブロックを処理
-    processed_text = re.sub(pattern, process_code_block, text, flags=re.DOTALL)
-    
-    return processed_text
+    # ```lang\n ... ``` を安定して検出
+    pattern = re.compile(r'```(\w*)\n([\s\S]*?)```', re.MULTILINE)
+
+    def fix(match):
+        lang = match.group(1)                  # 言語部分（空文字の場合もある）
+        code = match.group(2)                  # フェンス内のコード
+        lines = code.split('\n')
+
+        # 空行を除いて最小インデントを計算
+        indents = [
+            len(re.match(r'^\s*', line).group())
+            for line in lines if line.strip()
+        ]
+        min_indent = min(indents) if indents else 0
+
+        # インデントと末尾スペースを除去
+        new_lines = [
+            line[min_indent:].rstrip()
+            for line in lines
+        ]
+
+        # フェンスを含めて再構築
+        return f'```{lang}\n' + '\n'.join(new_lines) + '\n```'
+
+    # 全てのコードブロックに対して置換を実行
+    return pattern.sub(fix, text)
 
 def markdown_filter(text):
     """
@@ -211,90 +202,9 @@ def markdown_filter(text):
         },
         output_format='html5'                    # HTML5形式で出力
     )
-
-def handle_special_cases(text):
-    """
-    マークダウン内の特殊なケースを処理する関数
-    - 複数バッククォートの処理
-    - インラインコード内のバッククォートの処理
-    - 連続するコードブロックの適切な分離
-    """
-    import re
-    
-    # バッククォートが連続する場合（```dart```）を修正
-    # 例: ```dart``` を ```dart\n``` に変換
-    pattern1 = r'```(\w+)```'
-    text = re.sub(pattern1, r'```\1\n```', text)
-    
-    # コードブロックの後に直接別のコードブロックが始まる場合を修正
-    # 例: ```\ncode\n``````dart\ncode\n``` を ```\ncode\n```\n\n```dart\ncode\n``` に変換
-    pattern2 = r'```\s*\n(.*?)\n\s*```\s*```(\w+)'
-    text = re.sub(pattern2, r'```\n\1\n```\n\n```\2', text, flags=re.DOTALL)
-    
-    # マークダウンのコードブロックを全て検出して正しい形式に修正
-    pattern3 = r'```(\w*)\s*\n(.*?)\n\s*```'
-    
-    def format_code_block(match):
-        lang = match.group(1).strip()
-        code = match.group(2)
-        # コードの行頭と行末の空白を調整
-        lines = [line.rstrip() for line in code.split('\n')]
-        clean_code = "\n".join(lines)
-        return f'```{lang}\n{clean_code}\n```'
-    
-    text = re.sub(pattern3, format_code_block, text, flags=re.DOTALL)
-    
-    # マークダウンとHTMLが混在する場合の特殊処理
-    # <p>タグの後に```が続く場合の修正
-    pattern4 = r'(<p>.*?)\s*```(\w*)\s*\n'
-    text = re.sub(pattern4, r'\1</p>\n\n```\2\n', text, flags=re.DOTALL)
-    
-    # コードブロック後に<p>タグが続く場合の修正
-    pattern5 = r'```\s*\n(.*?)\n\s*```\s*(<p>)'
-    text = re.sub(pattern5, r'```\n\1\n```\n\n\2', text, flags=re.DOTALL)
-    
-    return text
-
-# 最終的なマークダウン処理パイプライン
-def complete_markdown_processing(text):
-    """
-    マークダウンテキストを完全に処理するパイプライン
-    1. 特殊なケースの処理
-    2. HTML要素の保護
-    3. コードブロックの正規化
-    4. マークダウンのHTML変換
-    """
-    # 特殊なケースの処理
-    text = handle_special_cases(text)
-    
-    # マークダウンをHTMLに変換
-    html = markdown.markdown(
-        text,
-        extensions=[
-            'markdown.extensions.fenced_code',
-            'markdown.extensions.codehilite',
-            'markdown.extensions.tables',
-            'markdown.extensions.sane_lists',
-            'markdown.extensions.nl2br',
-        ],
-        extension_configs={
-            'markdown.extensions.codehilite': {
-                'linenums': False,
-                'css_class': 'codehilite',
-                'guess_lang': True,
-                'use_pygments': True
-            },
-            'markdown.extensions.fenced_code': {
-                'lang_prefix': 'language-'
-            }
-        },
-        output_format='html5'
-    )
-    
-    return html
     
 # Flaskアプリケーションにフィルターを登録
-app.jinja_env.filters['markdown'] = complete_markdown_processing
+app.jinja_env.filters['markdown'] = markdown_filter
     
 def render_stars(rating):
     try: r = float(rating)
