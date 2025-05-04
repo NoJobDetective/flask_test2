@@ -503,7 +503,7 @@
       });
     }
 
-async function generateAndPrintAllPDFs() { // 関数全体を async function でラップ
+async function generateAllPostsPDF() { // 関数全体を async function でラップ
     const postsToPrint = document.querySelectorAll('.printable-content'); // 印刷対象の要素を取得
     if (postsToPrint.length === 0) {
         alert('印刷する投稿がありません。');
