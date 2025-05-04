@@ -331,7 +331,6 @@
   {% endif %}
   
   <div class="project-list">
-    <h2>{% if is_search %}検索結果一覧{% else %}過去の入力データ{% endif %}</h2>
     {% if projects %}
       {% for project in projects %}
         <div class="banner" id="banner{{ project.id }}" data-tags="{{ project.tags | join(',') }}">
