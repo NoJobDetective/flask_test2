@@ -254,8 +254,6 @@
 </style>
 </head>
 <body>
-  <h1>WEBサイト感想投稿サイト</h1>
-
   {% if session.get("master") %}
     <div style="text-align: center; margin-bottom: 10px;">
       <a href="{{ url_for('admin_logout') }}">一般ユーザ権限で閲覧する</a>
