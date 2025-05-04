@@ -299,10 +299,10 @@
 
   <!-- フィルター解除ボタン -->
   <button id="clear-filter">フィルター解除</button>
+  {% if session.get("master") %}
   <div style="text-align: center; margin: 20px 0;">
    <button id="generate-all-pdf-btn" style="padding: 8px 15px; font-size: 1rem; cursor: pointer;">全投稿をPDF化</button>
   </div>
-  {% if session.get("master") %}
   {% else %}
   <!-- 入力フォーム -->
   <form action="/" method="POST">
