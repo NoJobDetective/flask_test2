@@ -299,7 +299,9 @@
 
   <!-- フィルター解除ボタン -->
   <button id="clear-filter">フィルター解除</button>
-
+  <div style="text-align: center; margin: 20px 0;">
+   <button id="generate-all-pdf-btn" style="padding: 8px 15px; font-size: 1rem; cursor: pointer;">全投稿をPDF化</button>
+  </div>
   {% if session.get("master") %}
   {% else %}
   <!-- 入力フォーム -->
@@ -400,6 +402,13 @@
         banners.forEach(b => b.style.display = '');
         clearBtn.style.display = 'none';
       });
+
+      // 全投稿PDF化ボタンにイベントリスナーを追加
+      const generateButton = document.getElementById('generate-all-pdf-btn');
+      if (generateButton) {
+          generateButton.addEventListener('click', generateAllPostsPDF);
+      }
+      
     });
 
     function toggleLike(projectId) {
@@ -493,6 +502,84 @@
         printWindow.addEventListener('load', () => printWindow.print());
       });
     }
+
+  // ★ 全投稿を1つのPDFにまとめる関数 ★
+  async function generateAllPostsPDF() {
+      const postsToPrint = document.querySelectorAll('.printable-content'); // 印刷対象の要素を取得
+      if (postsToPrint.length === 0) {
+          alert('印刷する投稿がありません。');
+          return;
+      }
+
+      // ボタンを無効化し、テキストを変更（処理中を示す）
+      const button = document.getElementById('generate-all-pdf-btn');
+      if (button) {
+          button.disabled = true;
+          button.textContent = 'PDF生成中...';
+      }
+
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF('p', 'mm', 'a4'); // A4縦向きでPDFを初期化
+      const margin = 10; // PDFの余白 (mm)
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const availableWidth = pageWidth - margin * 2; // 描画可能な幅
+      const availableHeight = pageHeight - margin * 2; // 描画可能な高さ
+
+      try {
+          // 各投稿をループ処理 (非同期処理を待つため for...of と await を使用)
+          for (let i = 0; i < postsToPrint.length; i++) {
+              const element = postsToPrint[i];
+
+              // 最初の投稿以外は新しいページを追加
+              if (i > 0) {
+                  pdf.addPage();
+              }
+
+              // html2canvas で要素を画像化 (高解像度化のため scale: 2 を指定)
+              const canvas = await html2canvas(element, {
+                  scale: 2,
+                  useCORS: true // クロスオリジン画像がある場合に必要になることがある
+              });
+
+              const imgData = canvas.toDataURL('image/png');
+              const imgProps = pdf.getImageProperties(imgData);
+
+              // 画像のサイズを計算してページに収める (アスペクト比維持)
+              let pdfImgWidth = availableWidth;
+              let pdfImgHeight = (imgProps.height * pdfImgWidth) / imgProps.width;
+
+              // 高さがはみ出る場合は、高さを基準に幅を再計算
+              if (pdfImgHeight > availableHeight) {
+                  pdfImgHeight = availableHeight;
+                  pdfImgWidth = (imgProps.width * pdfImgHeight) / imgProps.height;
+              }
+
+              // 画像をPDFの現在のページに追加
+              pdf.addImage(imgData, 'PNG', margin, margin, pdfImgWidth, pdfImgHeight);
+          }
+
+          // 生成されたPDFを新しいタブで開く（印刷プレビュー）
+          const blob = pdf.output('blob');
+          const blobUrl = URL.createObjectURL(blob);
+          const printWindow = window.open(blobUrl);
+          // 必要であれば、自動で印刷ダイアログを開く
+          // printWindow.addEventListener('load', () => printWindow.print());
+
+          // または直接ダウンロードさせる場合:
+          // pdf.save('all_posts.pdf');
+
+      } catch (error) {
+          console.error("PDF生成中にエラーが発生しました:", error);
+          alert("PDFの生成に失敗しました。コンソールを確認してください。");
+      } finally {
+          // ボタンの状態を元に戻す
+          if (button) {
+              button.disabled = false;
+              button.textContent = '全投稿をPDF化';
+          }
+      }
+  }
   </script>
 </body>
 </html>
