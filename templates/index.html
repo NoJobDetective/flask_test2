@@ -503,83 +503,102 @@
       });
     }
 
-  // ★ 全投稿を1つのPDFにまとめる関数 ★
-  async function generateAllPostsPDF() {
-      const postsToPrint = document.querySelectorAll('.printable-content'); // 印刷対象の要素を取得
-      if (postsToPrint.length === 0) {
-          alert('印刷する投稿がありません。');
-          return;
-      }
+async function generateAndPrintAllPDFs() { // 関数全体を async function でラップ
+    const postsToPrint = document.querySelectorAll('.printable-content'); // 印刷対象の要素を取得
+    if (postsToPrint.length === 0) {
+        alert('印刷する投稿がありません。');
+        return;
+    }
 
-      // ボタンを無効化し、テキストを変更（処理中を示す）
-      const button = document.getElementById('generate-all-pdf-btn');
-      if (button) {
-          button.disabled = true;
-          button.textContent = 'PDF生成中...';
-      }
+    // ボタンを無効化し、テキストを変更（処理中を示す）
+    const button = document.getElementById('generate-all-pdf-btn');
+    let originalButtonText = '全投稿をPDF化'; // 元のテキストを保存
+    if (button) {
+        originalButtonText = button.textContent; // 既存のテキストを保存する場合
+        button.disabled = true;
+        button.textContent = 'PDF生成中...';
+    }
 
-      const { jsPDF } = window.jspdf;
-      const pdf = new jsPDF('p', 'mm', 'a4'); // A4縦向きでPDFを初期化
-      const margin = 10; // PDFの余白 (mm)
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      const availableWidth = pageWidth - margin * 2; // 描画可能な幅
-      const availableHeight = pageHeight - margin * 2; // 描画可能な高さ
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p', 'mm', 'a4'); // A4縦向きでPDFを初期化
+    const margin = 10; // PDFの余白 (mm)
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const availableWidth = pageWidth - margin * 2; // 描画可能な幅
+    const availableHeight = pageHeight - margin * 2; // 描画可能な高さ
 
-      try {
-          // 各投稿をループ処理 (非同期処理を待つため for...of と await を使用)
-          for (let i = 0; i < postsToPrint.length; i++) {
-              const element = postsToPrint[i];
+    let blobUrl = null; // blobUrl を try の外で宣言
 
-              // 最初の投稿以外は新しいページを追加
-              if (i > 0) {
-                  pdf.addPage();
-              }
+    try {
+        // 各投稿をループ処理 (非同期処理を待つため for...of と await を使用)
+        for (let i = 0; i < postsToPrint.length; i++) {
+            const element = postsToPrint[i];
 
-              // html2canvas で要素を画像化 (高解像度化のため scale: 2 を指定)
-              const canvas = await html2canvas(element, {
-                  scale: 2,
-                  useCORS: true // クロスオリジン画像がある場合に必要になることがある
-              });
+            // 最初の投稿以外は新しいページを追加
+            if (i > 0) {
+                pdf.addPage();
+            }
 
-              const imgData = canvas.toDataURL('image/png');
-              const imgProps = pdf.getImageProperties(imgData);
+            // html2canvas で要素を画像化 (高解像度化のため scale: 2 を指定)
+            const canvas = await html2canvas(element, {
+                scale: 2,
+                useCORS: true, // クロスオリジン画像がある場合に必要になることがある
+                logging: false // デバッグ時以外はコンソール出力を抑制すると良い場合がある
+            });
 
-              // 画像のサイズを計算してページに収める (アスペクト比維持)
-              let pdfImgWidth = availableWidth;
-              let pdfImgHeight = (imgProps.height * pdfImgWidth) / imgProps.width;
+            const imgData = canvas.toDataURL('image/png');
+            const imgProps = pdf.getImageProperties(imgData);
 
-              // 高さがはみ出る場合は、高さを基準に幅を再計算
-              if (pdfImgHeight > availableHeight) {
-                  pdfImgHeight = availableHeight;
-                  pdfImgWidth = (imgProps.width * pdfImgHeight) / imgProps.height;
-              }
+            // 画像のサイズを計算してページに収める (アスペクト比維持)
+            let pdfImgWidth = availableWidth;
+            let pdfImgHeight = (imgProps.height * pdfImgWidth) / imgProps.width;
 
-              // 画像をPDFの現在のページに追加
-              pdf.addImage(imgData, 'PNG', margin, margin, pdfImgWidth, pdfImgHeight);
-          }
+            // 高さがはみ出る場合は、高さを基準に幅を再計算
+            if (pdfImgHeight > availableHeight) {
+                pdfImgHeight = availableHeight;
+                pdfImgWidth = (imgProps.width * pdfImgHeight) / imgProps.height;
+            }
 
-          // 生成されたPDFを新しいタブで開く（印刷プレビュー）
-          const blob = pdf.output('blob');
-          const blobUrl = URL.createObjectURL(blob);
-          const printWindow = window.open(blobUrl);
-          // 必要であれば、自動で印刷ダイアログを開く
-          // printWindow.addEventListener('load', () => printWindow.print());
+            // 画像をPDFの現在のページに追加 (中央揃えにする場合はX座標を計算)
+            const x = margin + (availableWidth - pdfImgWidth) / 2;
+            const y = margin; // 上端揃え
+            pdf.addImage(imgData, 'PNG', x, y, pdfImgWidth, pdfImgHeight);
+        }
 
-          // または直接ダウンロードさせる場合:
-          // pdf.save('all_posts.pdf');
+        // --- 修正箇所 ---
+        // 生成されたPDFのBlob URLを直接取得
+        blobUrl = pdf.output('bloburl'); // 'blob' と createObjectURL の代わりに 'bloburl' を使用
+        // --- 修正箇所終わり ---
 
-      } catch (error) {
-          console.error("PDF生成中にエラーが発生しました:", error);
-          alert("PDFの生成に失敗しました。コンソールを確認してください。");
-      } finally {
-          // ボタンの状態を元に戻す
-          if (button) {
-              button.disabled = false;
-              button.textContent = '全投稿をPDF化';
-          }
-      }
-  }
+        // 生成されたPDFを新しいタブで開く（印刷プレビュー）
+        const printWindow = window.open(blobUrl);
+
+        // ポップアップブロッカー対策
+        if (!printWindow || printWindow.closed || typeof printWindow.closed == 'undefined') {
+             alert('PDFを開けませんでした。お使いのブラウザでポップアップがブロックされていないか確認してください。\n\n または、PDFを直接ダウンロードしますか？');
+             // 必要であればダウンロードのオプションを追加
+             // pdf.save("all_posts.pdf");
+        }
+
+
+    } catch (error) {
+        console.error("PDF生成中にエラーが発生しました:", error);
+        alert("PDFの生成に失敗しました。コンソールを確認してください。");
+    } finally {
+        // ボタンの状態を元に戻す
+        if (button) {
+            button.disabled = false;
+            button.textContent = originalButtonText; // 保存しておいた元のテキストに戻す
+        }
+        // blobUrl は jsPDF('bloburl') が内部で作成・管理するため、
+        // 基本的には revokeObjectURL を明示的に呼ぶ必要はないとされています。
+        // もし 'blob' を使って手動で createObjectURL する場合は、
+        // finally ブロックやウィンドウが閉じたタイミングで revokeObjectURL を呼ぶべきです。
+        // if (blobUrl) {
+        //     URL.revokeObjectURL(blobUrl);
+        // }
+    }
+}
   </script>
 </body>
 </html>
