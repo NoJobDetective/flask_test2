@@ -353,11 +353,13 @@
             <div class="bottom-section">
               <div class="reg-date">登録日: {{ project['登録日'] }}</div>
               <div class="rating-display">評価: {{ project.rating | render_stars }}</div>
-              <div class="like-section"><button class="like-button" onclick="toggleLike({{ project.id }})">いいね {{ project.likes|default(0) }}</button></div>
+              
               {% if session.get('master') %}
                 <div class="edit-link"><a href="{{ url_for('edit', project_id=project.id) }}">編集する</a></div>
+                <div class="print-link"><button class="print-button" onclick="printPreviewScaled(this)">印刷する</button></div>
                 <div class="delete-link"><a href="{{ url_for('delete', project_id=project.id) }}" class="delete-button">×</a></div>
               {% else %}
+                <div class="like-section"><button class="like-button" onclick="toggleLike({{ project.id }})">いいね {{ project.likes|default(0) }}</button></div>
                 <div class="print-link"><button class="print-button" onclick="printPreviewScaled(this)">印刷する</button></div>
               {% endif %}
             </div>
